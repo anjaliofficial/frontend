@@ -1,49 +1,53 @@
-"use client"; // Required for interactivity and icons
-import "../globals.css"; // Check this path! It must point to your CSS file
+"use client";
 import { LayoutDashboard, Calendar, User, Settings, LogOut } from "lucide-react";
+import Link from "next/link";
 import React from "react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const menuItems = [
-        { icon: <LayoutDashboard size={20} />, label: "Overview", active: true },
-        { icon: <Calendar size={20} />, label: "My Bookings", active: false },
-        { icon: <User size={20} />, label: "Profile", active: false },
-        { icon: <Settings size={20} />, label: "Settings", active: false },
-    ];
-
     return (
-        <div className="flex h-screen bg-[#f8fafc]">
-            {/* Sidebar */}
-            <aside className="w-72 bg-[#1a3a4a] text-white p-8 flex flex-col h-full">
-                <div className="text-2xl font-bold mb-12 flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-500 rounded-lg"></div>
+        <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f8fafc', overflow: 'hidden', fontFamily: 'sans-serif' }}>
+
+            {/* Sidebar - Locked Width */}
+            <aside style={{
+                width: '260px', minWidth: '260px', backgroundColor: '#1a3a4a',
+                color: 'white', padding: '30px', display: 'flex', flexDirection: 'column'
+            }}>
+                <div style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '40px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '28px', height: '28px', backgroundColor: '#3b82f6', borderRadius: '6px' }}></div>
                     <span>Sajilo Baas</span>
                 </div>
 
-                <nav className="flex-1 space-y-4">
-                    {menuItems.map((item, i) => (
-                        <div
-                            key={i}
-                            className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 ${item.active
-                                    ? 'bg-white/10 text-white shadow-inner'
-                                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                                }`}
-                        >
+                <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {[
+                        { icon: <LayoutDashboard size={18} />, label: "Overview" },
+                        { icon: <Calendar size={18} />, label: "My Bookings" },
+                        { icon: <User size={18} />, label: "Profile" },
+                        { icon: <Settings size={18} />, label: "Settings" },
+                    ].map((item, i) => (
+                        <div key={i} style={{
+                            display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
+                            borderRadius: '10px', color: i === 0 ? 'white' : '#94a3b8',
+                            backgroundColor: i === 0 ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            cursor: 'pointer'
+                        }}>
                             {item.icon}
-                            <span className="font-medium">{item.label}</span>
+                            <span style={{ fontSize: '14px', fontWeight: 500 }}>{item.label}</span>
                         </div>
                     ))}
                 </nav>
 
-                <button className="flex items-center gap-4 p-4 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors mt-auto">
-                    <LogOut size={20} />
-                    <span className="font-medium">Logout</span>
-                </button>
+                <Link href="/" style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
+                    color: '#f87171', textDecoration: 'none', marginTop: 'auto', fontSize: '14px'
+                }}>
+                    <LogOut size={18} />
+                    <span>Logout</span>
+                </Link>
             </aside>
 
-            {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto p-12 bg-[#f8fafc]">
-                <div className="max-w-6xl mx-auto">
+            {/* Content Area */}
+            <main style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
+                <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                     {children}
                 </div>
             </main>

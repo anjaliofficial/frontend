@@ -1,20 +1,29 @@
 "use client";
-import { useState, useEffect } from "react";
-import SplashScreen from "./public/_components/spalshScreen/SplashScreen";
-import "./globals.css";
+import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
+import SplashScreen from "./public/components/spalshScreen/SplashScreen"; // Use the new non-private path
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Simulates initial app loading
-    const timer = setTimeout(() => setIsLoading(false), 2500);
+    // Only show splash screen on the main landing page
+    if (pathname !== "/") {
+      setIsLoading(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
+
     return () => clearTimeout(timer);
-  }, []);
+  }, [pathname]);
 
   return (
     <html lang="en">
-      <body>
+      <body style={{ margin: 0, padding: 0, fontFamily: 'sans-serif' }}>
         {isLoading ? <SplashScreen /> : children}
       </body>
     </html>

@@ -1,4 +1,4 @@
-import Header from "../_components/Header";
+import Header from "../components/Header";
 import { Target, Users, ShieldCheck, Map, Award } from "lucide-react";
 
 export default function AboutPage() {

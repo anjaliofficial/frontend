@@ -1,20 +1,24 @@
-import RegisterForm from "../_components/RegisterForm";
+"use client";
+import React from "react";
+import LoginForm from "../components/LoginForm";
 
-export default function RegisterPage() {
+export default function LoginPage() {
     return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
-            <div className="bg-white rounded-[2rem] overflow-hidden shadow-2xl flex max-w-5xl w-full min-h-[750px]">
-                {/* Left Side - Form */}
-                <div className="w-full md:w-1/2 p-12 flex flex-col justify-center">
-                    <RegisterForm />
-                </div>
-                {/* Right Side - Image */}
-                <div className="hidden md:block w-1/2">
+        <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'sans-serif' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '32px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', maxWidth: '1024px', width: '100%', height: '650px' }}>
+
+                {/* Left Side - Image */}
+                <div style={{ width: '50%', display: 'block' }}>
                     <img
-                        src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6"
-                        className="w-full h-full object-cover"
-                        alt="Interior Design"
+                        src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        alt="Interior"
                     />
+                </div>
+
+                {/* Right Side - Form */}
+                <div style={{ width: '50%', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <LoginForm />
                 </div>
             </div>
         </div>

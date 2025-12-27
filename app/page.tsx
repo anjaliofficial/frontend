@@ -1,65 +1,251 @@
-import Header from "./public/_components/Header";
-import { Search, MapPin, Calendar, Users, Star } from "lucide-react";
+"use client";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import Header from "./public/components/Header"; // Adjust path as needed
+import { MapPin, Home, Shield, Star, Search, Calendar, Users, Filter, ChevronDown } from "lucide-react";
 
-export default function HomePage() {
-    const listings = [
-        { name: "Modern City View Apartment", loc: "Kathmandu, Nepal", price: 50, img: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267" },
-        { name: "Historic Bhaktapur Home", loc: "Bhaktapur, Nepal", price: 45, img: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750" },
-        { name: "Lakeside Guesthouse", loc: "Pokhara, Nepal", price: 40, img: "https://images.unsplash.com/photo-1493809842364-78817add7ffb" },
-        { name: "Mountain Vista Villa", loc: "Nagarkot, Nepal", price: 120, img: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688" },
-    ];
+export default function LandingPage() {
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setLoading(false), 2000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (loading) {
+        return (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ width: '50px', height: '50px', backgroundColor: '#1a3a4a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: 'white', fontSize: '24px', fontWeight: 'bold' }}>S</span>
+                    </div>
+                    <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#1a3a4a', margin: 0 }}>Sajilo Baas</h1>
+                </div>
+                <div style={{ marginTop: '30px', width: '200px', height: '5px', backgroundColor: '#f1f5f9', borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', backgroundColor: '#1a3a4a', width: '0%', animation: 'fill 2s ease-in-out forwards' }} />
+                </div>
+                <style>{`@keyframes fill { from { width: 0%; } to { width: 100%; } }`}</style>
+            </div>
+        );
+    }
 
     return (
-        <main className="min-h-screen bg-gray-50">
-            <Header />
+        <div style={{ fontFamily: 'sans-serif', color: '#333', margin: 0, backgroundColor: '#fff' }}>
+            {/* 1. NAVBAR */}
+            <nav style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 60px', alignItems: 'center', borderBottom: '1px solid #eee', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 100 }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1a3a4a', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '32px', height: '32px', backgroundColor: '#1a3a4a', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: 'white', fontSize: '16px' }}>S</span>
+                    </div>
+                    Sajilo Baas
+                </div>
+                <div style={{ display: 'flex', gap: '25px', alignItems: 'center' }}>
+                    <Link href="#" style={{ textDecoration: 'none', color: '#666', fontSize: '14px' }}>List a Property</Link>
+                    <Link href="#" style={{ textDecoration: 'none', color: '#666', fontSize: '14px' }}>About Us</Link>
+                    <Link href="#" style={{ textDecoration: 'none', color: '#666', fontSize: '14px' }}>Help</Link>
+                    <Link href="/auth/login" style={{ textDecoration: 'none', color: '#1a3a4a', fontWeight: '600', padding: '8px 16px', borderRadius: '8px', backgroundColor: '#e0f2fe' }}>Login</Link>
+                    <Link href="/auth/register" style={{ textDecoration: 'none', backgroundColor: '#3b82f6', color: 'white', padding: '8px 20px', borderRadius: '8px', fontWeight: '600' }}>Sign Up</Link>
+                </div>
+            </nav>
 
-            {/* Hero Section */}
-            <section className="relative h-[550px] flex items-center justify-center">
-                <img src="https://images.unsplash.com/photo-1544735716-392fe2489ffa" className="absolute inset-0 w-full h-full object-cover brightness-50" />
-                <div className="relative text-center text-white px-4">
-                    <h1 className="text-5xl font-bold mb-4">Find Your Perfect Stay in Nepal</h1>
-                    <p className="text-xl opacity-90 mb-10">Discover and book unique homes and experiences.</p>
+            {/* 2. HERO SECTION WITH ENHANCED SEARCH */}
+            <header style={{ position: 'relative', height: '550px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', textAlign: 'center' }}>
+                <div style={{ position: 'absolute', inset: 0 }}>
+                    <img src="https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=80&w=2000" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Nepal Mountains" />
+                    <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)' }}></div>
+                </div>
 
-                    {/* Search Box */}
-                    <div className="bg-white rounded-xl p-3 shadow-2xl flex flex-col md:flex-row items-center gap-2 max-w-5xl mx-auto text-gray-800">
-                        <div className="flex-1 flex items-center gap-2 px-4 py-2 border-r">
-                            <MapPin className="text-blue-500" size={20} />
-                            <input type="text" placeholder="e.g. Kathmandu" className="outline-none w-full" />
+                <div style={{ position: 'relative', zIndex: 2, marginBottom: '40px' }}>
+                    <h1 style={{ fontSize: '48px', fontWeight: '800', marginBottom: '10px' }}>Find Your Perfect Stay in Nepal</h1>
+                    <p style={{ fontSize: '18px', opacity: 0.9 }}>Discover and book unique homes and experiences.</p>
+                </div>
+
+                {/* ADVANCED SEARCH BAR */}
+                <div style={{
+                    position: 'relative', zIndex: 2, backgroundColor: 'white', padding: '20px',
+                    borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '15px',
+                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', width: '90%', maxWidth: '1000px',
+                    color: '#444'
+                }}>
+                    <div style={{ flex: 1.5, textAlign: 'left' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Location</label>
+                        <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px' }}>
+                            <Search size={18} color="#94a3b8" />
+                            <input type="text" placeholder="e.g., Kathmandu" style={{ border: 'none', background: 'transparent', outline: 'none', marginLeft: '10px', width: '100%' }} />
                         </div>
-                        <div className="flex-1 flex items-center gap-2 px-4 py-2 border-r">
-                            <Calendar className="text-blue-500" size={20} />
-                            <span className="text-gray-400">mm/dd/yyyy</span>
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'left' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Check-in</label>
+                        <div style={{ backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#94a3b8' }}>mm/dd/yyyy</span>
+                            <Calendar size={18} color="#94a3b8" />
                         </div>
-                        <div className="flex-1 flex items-center gap-2 px-4 py-2">
-                            <Users className="text-blue-500" size={20} />
-                            <select className="bg-transparent outline-none w-full"><option>2 Guests</option></select>
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'left' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Check-out</label>
+                        <div style={{ backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#94a3b8' }}>mm/dd/yyyy</span>
+                            <Calendar size={18} color="#94a3b8" />
                         </div>
-                        <button className="bg-blue-600 text-white px-10 py-3 rounded-lg flex items-center gap-2 font-bold hover:bg-blue-700">
-                            <Search size={18} /> Search
-                        </button>
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'left' }}>
+                        <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Guests</label>
+                        <div style={{ backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>2 guests</span>
+                            <ChevronDown size={18} color="#94a3b8" />
+                        </div>
+                    </div>
+                    <button style={{ height: '45px', backgroundColor: '#3b82f6', color: 'white', border: 'none', padding: '0 30px', borderRadius: '8px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', alignSelf: 'flex-end' }}>
+                        <Search size={18} /> Search
+                    </button>
+                </div>
+            </header>
+
+            {/* 3. FILTER BAR */}
+            <section style={{ padding: '30px 60px', display: 'flex', gap: '15px' }}>
+                <button style={filterBtnStyle}><Home size={16} /> Property Type <ChevronDown size={14} /></button>
+                <button style={filterBtnStyle}><Star size={16} /> Price Range <ChevronDown size={14} /></button>
+                <button style={filterBtnStyle}><Filter size={16} /> More Filters</button>
+            </section>
+
+            {/* 4. FEATURED LISTINGS */}
+            <section style={{ padding: '20px 60px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '25px' }}>Featured Listings</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '25px' }}>
+                    <ListingCard
+                        img="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=500"
+                        title="Modern City View Apartment"
+                        loc="Kathmandu, Nepal"
+                        price="50"
+                        rating="4.9"
+                    />
+                    <ListingCard
+                        img="https://images.unsplash.com/photo-1590059132213-f915f0bb6155?w=500"
+                        title="Historic Bhaktapur Home"
+                        loc="Bhaktapur, Nepal"
+                        price="45"
+                        rating="4.8"
+                    />
+                    <ListingCard
+                        img="https://images.unsplash.com/photo-1623150531065-4700078021c3?w=500"
+                        title="Lakeside Guesthouse"
+                        loc="Pokhara, Nepal"
+                        price="40"
+                        rating="4.9"
+                    />
+                    <ListingCard
+                        img="https://images.unsplash.com/photo-1464146072230-91cabc968266?w=500"
+                        title="Mountain Vista Villa"
+                        loc="Nagarkot, Nepal"
+                        price="120"
+                        rating="5.0"
+                    />
+                </div>
+            </section>
+
+            {/* 5. POPULAR DESTINATIONS */}
+            <section style={{ padding: '60px 60px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '25px' }}>Explore Popular Destinations</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px' }}>
+                    <DestCard img="https://images.unsplash.com/photo-1582650845100-366d49826d9c?w=600" name="Kathmandu" />
+                    <DestCard img="https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=600" name="Pokhara" />
+                    <DestCard img="https://images.unsplash.com/photo-1623150531065-4700078021c3?w=600" name="Chitwan" />
+                </div>
+            </section>
+
+            {/* 6. HOSTING CALL TO ACTION */}
+            <section style={{ margin: '60px', padding: '60px', borderRadius: '24px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ maxWidth: '500px' }}>
+                    <h2 style={{ fontSize: '36px', color: '#1a3a4a', marginBottom: '20px' }}>Become a Host</h2>
+                    <p style={{ fontSize: '18px', color: '#64748b', marginBottom: '30px' }}>Earn extra income by sharing your space with travelers from around the world.</p>
+                    <button style={{ backgroundColor: '#1a3a4a', color: 'white', padding: '15px 40px', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>List Your Property</button>
+                </div>
+                <img src="https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=500" style={{ width: '400px', borderRadius: '20px' }} alt="Hosting" />
+            </section>
+
+            {/* 7. FOOTER */}
+            <footer style={{ padding: '60px', borderTop: '1px solid #eee', backgroundColor: '#fff' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '40px', marginBottom: '60px' }}>
+                    <div>
+                        <h4 style={{ marginBottom: '20px' }}>Support</h4>
+                        <div style={footerLinkStyle}>Help Center</div>
+                        <div style={footerLinkStyle}>Contact Us</div>
+                        <div style={footerLinkStyle}>Cancellation options</div>
+                    </div>
+                    <div>
+                        <h4 style={{ marginBottom: '20px' }}>Company</h4>
+                        <div style={footerLinkStyle}>About Us</div>
+                        <div style={footerLinkStyle}>Careers</div>
+                        <div style={footerLinkStyle}>Press</div>
+                    </div>
+                    <div>
+                        <h4 style={{ marginBottom: '20px' }}>Hosting</h4>
+                        <div style={footerLinkStyle}>List your property</div>
+                        <div style={footerLinkStyle}>Hosting resources</div>
+                    </div>
+                    <div>
+                        <h4 style={{ marginBottom: '20px' }}>Follow Us</h4>
+                        {/* Social icons would go here */}
                     </div>
                 </div>
-            </section>
-
-            {/* Featured Listings */}
-            <section className="max-w-7xl mx-auto py-16 px-12">
-                <h2 className="text-2xl font-bold mb-8 text-gray-800">Featured Listings</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {listings.map((item, idx) => (
-                        <div key={idx} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer">
-                            <img src={item.img} className="h-48 w-full object-cover" />
-                            <div className="p-4">
-                                <h3 className="font-bold text-gray-800 truncate">{item.name}</h3>
-                                <p className="text-sm text-gray-500">{item.loc}</p>
-                                <div className="mt-4 flex justify-between items-center">
-                                    <span className="font-bold text-[#1a3a4a]">${item.price} <span className="text-gray-400 font-normal">/ night</span></span>
-                                    <span className="flex items-center gap-1 text-sm font-semibold"><Star size={14} className="fill-yellow-400 text-yellow-400" /> 4.9</span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #eee', paddingTop: '30px', fontSize: '14px', color: '#64748b' }}>
+                    <span>© 2024 Nepal Stays. All rights reserved.</span>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                        <span>Privacy Policy</span>
+                        <span>Terms of Service</span>
+                    </div>
                 </div>
-            </section>
-        </main>
+            </footer>
+        </div>
+    );
+}
+
+// Styling Constants
+const filterBtnStyle = {
+    padding: '10px 20px',
+    borderRadius: '10px',
+    border: '1px solid #e2e8f0',
+    backgroundColor: '#eff6ff',
+    color: '#3b82f6',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer'
+};
+
+const footerLinkStyle = {
+    color: '#64748b',
+    fontSize: '14px',
+    marginBottom: '12px',
+    cursor: 'pointer'
+};
+
+// Helper Components
+function ListingCard({ img, title, loc, price, rating }: any) {
+    return (
+        <div style={{ cursor: 'pointer' }}>
+            <img src={img} style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '16px', marginBottom: '15px' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <h4 style={{ margin: 0, fontSize: '16px' }}>{title}</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', fontWeight: 'bold' }}>
+                    <Star size={14} fill="#f59e0b" color="#f59e0b" /> {rating}
+                </div>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '14px', margin: '5px 0' }}>{loc}</p>
+            <p style={{ margin: '5px 0', fontWeight: 'bold' }}>${price} <span style={{ fontWeight: 'normal', color: '#64748b' }}>/ night</span></p>
+        </div>
+    );
+}
+
+function DestCard({ img, name }: any) {
+    return (
+        <div style={{ position: 'relative', height: '350px', borderRadius: '20px', overflow: 'hidden', cursor: 'pointer' }}>
+            <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '25px', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}>
+                <h3 style={{ color: 'white', margin: 0, fontSize: '24px' }}>{name}</h3>
+            </div>
+        </div>
     );
 }
