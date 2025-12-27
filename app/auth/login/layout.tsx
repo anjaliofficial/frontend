@@ -1,14 +1,10 @@
 // app/auth/login/layout.tsx
 import React from "react";
 
-export default function LoginLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function LoginLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="login-wrapper">
+        <section style={{ width: '100%', minHeight: '100vh' }}>
             {children}
-        </div>
+        </section>
     );
 }
