@@ -1,7 +1,15 @@
 "use client";
 import { Mail, Lock } from 'lucide-react';
+import { useRouter } from 'next/navigation'; // 1. Import the router
 
 export default function LoginForm() {
+    const router = useRouter(); // 2. Initialize the router
+
+    const handleLogin = () => {
+        // 3. Simple direct redirect to dashboard
+        router.push('/dashboard');
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -27,7 +35,11 @@ export default function LoginForm() {
                 </div>
             </div>
 
-            <button style={{ width: '100%', backgroundColor: '#1e3a4c', color: 'white', padding: '12px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>
+            {/* 4. Added onClick handler here */}
+            <button
+                onClick={handleLogin}
+                style={{ width: '100%', backgroundColor: '#1e3a4c', color: 'white', padding: '12px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' }}
+            >
                 Log In
             </button>
 
