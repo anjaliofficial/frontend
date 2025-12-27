@@ -8,7 +8,7 @@ export default function LandingPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 2000);
+        const timer = setTimeout(() => setLoading(false), 200);
         return () => clearTimeout(timer);
     }, []);
 
@@ -120,14 +120,14 @@ export default function LandingPage() {
                         rating="4.9"
                     />
                     <ListingCard
-                        img="https://images.unsplash.com/photo-1590059132213-f915f0bb6155?w=500"
+                        img="https://th.bing.com/th/id/R.033701613801a7c0387f5c334c6114ff?rik=VGcgD2ACZbUi4A&pid=ImgRaw&r=0"
                         title="Historic Bhaktapur Home"
                         loc="Bhaktapur, Nepal"
-                        price="45"
+                        price="4500"
                         rating="4.8"
                     />
                     <ListingCard
-                        img="https://images.unsplash.com/photo-1623150531065-4700078021c3?w=500"
+                        img="https://tse2.mm.bing.net/th/id/OIP.8JQNBGAwYip-2nciBQLcowHaLG?rs=1&pid=ImgDetMain&o=7&rm=3"
                         title="Lakeside Guesthouse"
                         loc="Pokhara, Nepal"
                         price="40"
@@ -147,9 +147,9 @@ export default function LandingPage() {
             <section style={{ padding: '60px 60px' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '25px' }}>Explore Popular Destinations</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px' }}>
-                    <DestCard img="https://images.unsplash.com/photo-1582650845100-366d49826d9c?w=600" name="Kathmandu" />
-                    <DestCard img="https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=600" name="Pokhara" />
-                    <DestCard img="https://images.unsplash.com/photo-1623150531065-4700078021c3?w=600" name="Chitwan" />
+                    <DestCard img="https://tse1.mm.bing.net/th/id/OIP.sKUty3APE68n5A-isNqBeAHaFj?rs=1&pid=ImgDetMain&o=7&rm=3" name="Kathmandu" />
+                    <DestCard img="https://th.bing.com/th/id/R.92459da57f847882a1d348c230969663?rik=VAUvO%2bPyzftvmA&riu=http%3a%2f%2flamakarma.net%2fwp-content%2fuploads%2fFewa_Lake_Pokhara_Nepal.jpg&ehk=100QwiT4a4%2fnZMwM8236SPVGA%2fnfLuWvstY4Wz95%2fIo%3d&risl=&pid=ImgRaw&r=0" name="Pokhara" />
+                    <DestCard img="https://irp.cdn-website.com/ca5742e6/dms3rep/multi/Chitwan_Elephant_Ride.jpg" name="Chitwan" />
                 </div>
             </section>
 
