@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import SplashScreen from "./public/components/spalshScreen/SplashScreen"; // Use the new non-private path
+import SplashScreen from "./(public)/components/spalshScreen/SplashScreen"; // Use the new non-private path
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
