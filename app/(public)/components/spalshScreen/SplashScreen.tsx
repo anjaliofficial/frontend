@@ -2,93 +2,26 @@
 
 export default function SplashScreen() {
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: '#ffffff',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      fontFamily: 'sans-serif'
-    }}>
-      {/* Container for Logo and Name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-
-        {/* The "S" Icon Box */}
-        <div style={{
-          width: '56px',
-          height: '56px',
-          backgroundColor: '#1a3a4a',
-          borderRadius: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(26, 58, 74, 0.2)'
-        }}>
-          <span style={{
-            color: 'white',
-            fontSize: '28px',
-            fontWeight: 'bold'
-          }}>S</span>
+    <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[9999] font-sans">
+      {/* Logo + Name */}
+      <div className="flex items-center gap-4">
+        <div className="w-14 h-14 bg-[#1a3a4a] rounded-xl flex items-center justify-center shadow-md">
+          <span className="text-white text-2xl font-bold">S</span>
         </div>
-
-        {/* Brand Name */}
-        <h1 style={{
-          fontSize: '36px',
-          fontWeight: '800',
-          color: '#1a3a4a',
-          margin: 0,
-          letterSpacing: '-1px'
-        }}>
+        <h1 className="text-3xl font-extrabold text-[#1a3a4a] tracking-tight">
           Sajilo Baas
         </h1>
       </div>
 
-      {/* Loading Progress Bar */}
-      <div style={{
-        marginTop: '48px',
-        width: '240px',
-        height: '6px',
-        backgroundColor: '#f1f5f9',
-        borderRadius: '10px',
-        overflow: 'hidden',
-        position: 'relative'
-      }}>
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          height: '100%',
-          backgroundColor: '#1a3a4a',
-          width: '0%',
-          borderRadius: '10px',
-          animation: 'fillProgress 2.5s ease-in-out forwards'
-        }}></div>
+      {/* Progress Bar */}
+      <div className="mt-12 w-60 h-1.5 bg-slate-100 rounded-lg overflow-hidden relative">
+        <div className="absolute top-0 left-0 h-full bg-[#1a3a4a] animate-progress-bar rounded-lg"></div>
       </div>
 
       {/* Subtext */}
-      <p style={{
-        marginTop: '20px',
-        fontSize: '14px',
-        color: '#94a3b8',
-        fontWeight: '500',
-        letterSpacing: '1px'
-      }}>
+      <p className="mt-5 text-sm text-slate-400 font-medium tracking-wider">
         NEPAL STAYS
       </p>
-
-      {/* Animation Logic */}
-      <style>{`
-        @keyframes fillProgress {
-          0% { width: 0%; }
-          100% { width: 100%; }
-        }
-      `}</style>
     </div>
   );
 }
