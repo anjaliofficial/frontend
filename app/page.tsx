@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import {
     MapPin, Home, Shield, Star, Search, Calendar,
@@ -8,30 +8,6 @@ import {
 import "./globals.css";
 
 export default function LandingPage() {
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center font-sans">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[#1a3a4a] rounded-xl flex items-center justify-center">
-                        <span className="text-white text-2xl font-bold">S</span>
-                    </div>
-                    <h1 className="text-3xl font-bold text-[#1a3a4a]">Sajilo Baas</h1>
-                </div>
-                <div className="mt-8 w-52 h-1.5 bg-slate-100 rounded-lg overflow-hidden">
-                    <div className="h-full bg-[#1a3a4a] animate-[fill_2s_ease-in-out_forwards]" />
-                </div>
-                <style>{`@keyframes fill { from { width: 0%; } to { width: 100%; } }`}</style>
-            </div>
-        );
-    }
-
     return (
         <div className="font-sans text-gray-800 bg-white">
             {/* NAVBAR */}

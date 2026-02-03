@@ -3,31 +3,22 @@ import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import SplashScreen from "./(public)/components/spalshScreen/SplashScreen";
 import "./globals.css";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasShown, setHasShown] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    // Show splash only once on first load
-    if (hasShown) {
+    // Show splash only on home page on first visit
+    if (pathname === "/") {
+      setIsLoading(true);
+      const timer = setTimeout(() => setIsLoading(false), 250);
+      return () => clearTimeout(timer);
+    } else {
+      // Don't show splash on auth pages
       setIsLoading(false);
-      return;
     }
-
-    // Only show splash on home page
-    if (pathname !== "/") {
-      setIsLoading(false);
-      setHasShown(true);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      setHasShown(true);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [pathname, hasShown]);
+  }, []);
 
   return (
     <html lang="en">

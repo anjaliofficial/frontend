@@ -3,7 +3,8 @@ import React, { useState } from "react";
 import { Mail, Lock, User, Phone, MapPin } from "lucide-react";
 
 export default function RegisterForm() {
-    const [role, setRole] = useState<"customer" | "host" | "admin">("customer");
+    // Only allow "customer" or "host"
+    const [role, setRole] = useState<"customer" | "host">("customer");
 
     return (
         <div className="flex flex-col gap-6">
@@ -11,10 +12,10 @@ export default function RegisterForm() {
 
             {/* Role Toggle */}
             <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
-                {["customer", "host", "admin"].map((r) => (
+                {["customer", "host"].map((r) => (
                     <button
                         key={r}
-                        onClick={() => setRole(r as "customer" | "host" | "admin")}
+                        onClick={() => setRole(r as "customer" | "host")}
                         className={`px-4 py-2 rounded-md font-semibold cursor-pointer ${role === r ? "bg-white shadow" : "bg-transparent"
                             }`}
                     >
@@ -40,7 +41,7 @@ export default function RegisterForm() {
 
             <p className="text-center text-sm text-gray-500">
                 Already have an account?{" "}
-                <a href="/login" className="text-blue-600 font-bold">
+                <a href="/auth/login" className="text-blue-600 font-bold">
                     Sign In Now
                 </a>
             </p>
