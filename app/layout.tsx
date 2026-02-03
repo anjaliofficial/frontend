@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import SplashScreen from "./(public)/components/spalshScreen/SplashScreen";
-
+import "./globals.css";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();

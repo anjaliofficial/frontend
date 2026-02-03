@@ -5,6 +5,7 @@ import {
     MapPin, Home, Shield, Star, Search, Calendar,
     Users, Filter, ChevronDown, Facebook, Instagram, Twitter
 } from "lucide-react";
+import "./globals.css";
 
 export default function LandingPage() {
     const [loading, setLoading] = useState(true);
