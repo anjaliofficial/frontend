@@ -1,53 +1,33 @@
-import Link from 'next/link';
+"use client";
+import Link from "next/link";
 
 export default function Header() {
-    const navItemStyle = {
-        textDecoration: 'none',
-        color: '#475569',
-        fontSize: '14px',
-        fontWeight: 500,
-    };
-
     return (
-        <header style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '16px 48px',
-            backgroundColor: 'white',
-            borderBottom: '1px solid #f1f5f9',
-            position: 'sticky',
-            top: 0,
-            zIndex: 50,
-            fontFamily: 'sans-serif'
-        }}>
+        <header className="flex items-center justify-between px-12 py-4 bg-white border-b border-slate-100 sticky top-0 z-50 font-sans">
             {/* Branding */}
-            <Link href="/" style={{ textDecoration: 'none', fontSize: '24px', fontWeight: 'bold', color: '#1a3a4a' }}>
+            <Link href="/" className="text-2xl font-bold text-[#1a3a4a] no-underline">
                 Sajilo Baas
             </Link>
 
             {/* Navigation */}
-            <nav style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-                <Link href="/about" style={navItemStyle}>About Us</Link>
-                <Link href="/dashboard" style={navItemStyle}>My Dashboard</Link>
-                <Link href="#" style={navItemStyle}>Help</Link>
+            <nav className="flex items-center gap-8 text-sm font-medium text-slate-600">
+                <Link href="/about" className="hover:text-[#1a3a4a]">About Us</Link>
+                <Link href="/dashboard" className="hover:text-[#1a3a4a]">My Dashboard</Link>
+                <Link href="#" className="hover:text-[#1a3a4a]">Help</Link>
             </nav>
 
-            {/* Auth Buttons - Updated Paths */}
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <Link href="/auth/login" style={{
-                    textDecoration: 'none', color: '#1a3a4a', fontWeight: 600, padding: '8px 16px'
-                }}>Login</Link>
-
-                <Link href="/auth/register" style={{
-                    textDecoration: 'none', backgroundColor: '#2563eb', color: 'white',
-                    padding: '10px 24px', borderRadius: '10px', fontWeight: 600
-                }}>Sign Up</Link>
+            {/* Auth Buttons */}
+            <div className="flex items-center gap-3">
+                <Link href="/auth/login" className="text-[#1a3a4a] font-semibold px-4 py-2">
+                    Login
+                </Link>
+                <Link
+                    href="/auth/register"
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+                >
+                    Sign Up
+                </Link>
             </div>
         </header>
     );
 }
-
-
-
-

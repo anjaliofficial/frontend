@@ -1,44 +1,21 @@
+// app/proxy.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthToken, getUserData} from "@/lib/cookie";
+// import { getAuthToken, getUserData } from "@/lib/auth"; // adjust path
 
-const publicRoutes = ['/login', '/register', '/forget-password', '/reset-password'];
-const adminRoutes = ['/admin'];
-const userRoutes = ['/user'];
+export default async function proxy(request: NextRequest) {
+  // Example: extract token from cookies
+  const token = request.cookies.get("authToken")?.value;
 
-export async function proxy(request: NextRequest) {
-    const { pathname } = request.nextUrl;
-    const token = await getAuthToken();
-    const user = token ? await getUserData() : null;
+  // If no token, redirect to login
+  if (!token && request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
 
-    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
-    const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
-    const isUserRoute = userRoutes.some(route => pathname.startsWith(route));
-    
-    if(!token && !isPublicRoute){
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
+  // If you want role-based checks:
+  // const user = await getUserData(token);
+  // if (request.nextUrl.pathname.startsWith("/admin") && user?.role !== "admin") {
+  //   return NextResponse.redirect(new URL("/auth/login", request.url));
+  // }
 
-    if(token && user){
-        if(isAdminRoute && user.role !== 'admin'){
-            return NextResponse.redirect(new URL('/', request.url));
-        }
-        if(isUserRoute && user.role !== 'user' && user.role !=='admin'){
-            return NextResponse.redirect(new URL('/', request.url));
-        }
-    }
-
-    if(isPublicRoute && token) {
-        return NextResponse.redirect(new URL('/', request.url));
-    }
-
-    return NextResponse.next();
-}
-export const config = {
-    matcher: [
-        // what routes to protect/match
-        '/admin/:path*',
-        '/user/:path*',
-        '/login',
-        '/register'
-    ]
+  return NextResponse.next();
 }
