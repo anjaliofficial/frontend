@@ -57,7 +57,7 @@ export default function LoginForm() {
 
             <p className="text-center text-sm text-gray-600">
                 Don't have an account?{" "}
-                <a href="/auth/register" className="text-blue-600 font-semibold">
+                <a href="/register" className="text-blue-600 font-semibold">
                     Register Now
                 </a>
             </p>

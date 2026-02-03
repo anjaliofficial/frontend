@@ -40,7 +40,7 @@ export default function RegisterForm() {
 
             <p className="text-center text-sm text-gray-500">
                 Already have an account?{" "}
-                <a href="/auth/login" className="text-blue-600 font-bold">
+                <a href="/login" className="text-blue-600 font-bold">
                     Sign In Now
                 </a>
             </p>

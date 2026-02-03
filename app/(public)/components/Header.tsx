@@ -18,11 +18,11 @@ export default function Header() {
 
             {/* Auth Buttons */}
             <div className="flex items-center gap-3">
-                <Link href="/auth/login" className="text-[#1a3a4a] font-semibold px-4 py-2">
+                <Link href="/login" className="text-[#1a3a4a] font-semibold px-4 py-2">
                     Login
                 </Link>
                 <Link
-                    href="/auth/register"
+                    href="/register"
                     className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
                 >
                     Sign Up

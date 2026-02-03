@@ -46,8 +46,8 @@ export default function LandingPage() {
                     <Link href="#" className="text-gray-600">List a Property</Link>
                     <Link href="#" className="text-gray-600">About Us</Link>
                     <Link href="#" className="text-gray-600">Help</Link>
-                    <Link href="/auth/login" className="text-[#1a3a4a] font-semibold px-4 py-2 rounded-lg bg-sky-100">Login</Link>
-                    <Link href="/auth/register" className="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold">Sign Up</Link>
+                    <Link href="/login" className="text-[#1a3a4a] font-semibold px-4 py-2 rounded-lg bg-sky-100">Login</Link>
+                    <Link href="/register" className="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold">Sign Up</Link>
                 </div>
             </nav>
 

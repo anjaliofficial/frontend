@@ -5,16 +5,29 @@ import SplashScreen from "./(public)/components/spalshScreen/SplashScreen";
 import "./globals.css";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
+  const [hasShown, setHasShown] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    if (pathname !== "/") {
+    // Show splash only once on first load
+    if (hasShown) {
       setIsLoading(false);
       return;
     }
-    const timer = setTimeout(() => setIsLoading(false), 250);
+
+    // Only show splash on home page
+    if (pathname !== "/") {
+      setIsLoading(false);
+      setHasShown(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      setHasShown(true);
+    }, 250);
     return () => clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname, hasShown]);
 
   return (
     <html lang="en">
