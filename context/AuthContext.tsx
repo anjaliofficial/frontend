@@ -1,64 +1,52 @@
-// "use client"
-// import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-// import { clearAuthCookies, getAuthToken, getUserData } from "@/lib/cookie";
-// import { useRouter } from "next/navigation";
+"use client";
 
-// interface AuthContextProps {
-//     isAuthenticated: boolean;
-//     setIsAuthenticated: (value: boolean) => void;
-//     user: any;
-//     setUser: (user: any) => void;
-//     logout: () => Promise<void>;
-//     loading: boolean;
-//     checkAuth: () => Promise<void>;
-// }
+import { createContext, useContext, useState, ReactNode } from "react";
 
-// const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+type Role = "admin" | "host" | "user";
 
-// export const AuthProvider = ({ children }: { children: ReactNode }) => {
-//     const [isAuthenticated, setIsAuthenticated] = useState(false);
-//     const [user, setUser] = useState<any>(null);
-//     const [loading, setLoading] = useState(true);
-//     const router = useRouter();
-//     const checkAuth = async () => {
-//         try {
-//             const token = await getAuthToken();
-//             const user = await getUserData();
-//             setUser(user);
-//             setIsAuthenticated(!!token);
-//         } catch (err) {
-//             setIsAuthenticated(false);
-//             setUser(null);
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
+interface User {
+    id: number;
+    name: string;
+    email: string;
+    role: Role;
+}
 
-//     useEffect(() => {
-//         checkAuth();
-//     }, []);
+interface AuthContextType {
+    user: User | null;
+    loginAsAdmin: () => void;
+    logout: () => void;
+}
 
-//     const logout = async () => {
-//         try {
-//             await clearAuthCookies();
-//             setIsAuthenticated(false);
-//             setUser(null);
-//             router.push("/login");
-//         } catch (error) {
-//             console.error("Logout failed:", error);
-//         }
-//     }
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-//     return (
-//         <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, user, setUser, logout, loading, checkAuth }}>
-//             {children}
-//         </AuthContext.Provider>
-//     );
-// }
-// export const useAuth = () => {
-//     const context = useContext(AuthContext);
-//     if (context === undefined) {
-//         throw new Error("useAuth must be used within an AuthProvider");
-//     }
-//     return context;
-// };
+export const useAuth = () => {
+    const ctx = useContext(AuthContext);
+    if (!ctx) {
+        throw new Error("useAuth must be used within AuthProvider");
+    }
+    return ctx;
+};
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+    const [user, setUser] = useState<User | null>({
+        id: 1,
+        name: "Alice Admin",
+        email: "alice@admin.com",
+        role: "admin",
+    });
+
+    const loginAsAdmin = () => setUser({
+        id: 1,
+        name: "Alice Admin",
+        email: "alice@admin.com",
+        role: "admin",
+    });
+
+    const logout = () => setUser(null);
+
+    return (
+        <AuthContext.Provider value={{ user, loginAsAdmin, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
+}
