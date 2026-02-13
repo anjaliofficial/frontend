@@ -1,43 +1,44 @@
 "use client";
 
-import React, { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext"
-import Header from "./_components/Header";
-import DashboardOverview from "./_components/DashboardOverview";
+import { getUserData, clearAuthCookies, UserData } from "@/lib/cookie";
+import Header from "@/app/dashboard/_components/Header";
+import DashboardOverview from "@/app/dashboard/_components/DashboardOverview";
 
-export default function DashboardPage() {
-    const { user, logout } = useAuth();
+export default function CustomerDashboardPage() {
     const router = useRouter();
+    const [user, setUser] = useState<UserData | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!user) {
-            router.replace("/login");
-        }
-    }, [user, router]);
+        const fetchUser = async () => {
+            const userData = await getUserData();
+            if (!userData || userData.role !== "customer") {
+                router.replace("/login");
+                return;
+            }
+            setUser(userData);
+            setLoading(false);
+        };
 
-    if (!user) return <div>Loading...</div>;
+        fetchUser();
+    }, [router]);
+
+    const handleLogout = () => {
+        clearAuthCookies();
+        router.push("/login");
+    };
+
+    if (loading) return <div className="p-8">Loading...</div>;
+    if (!user) return null;
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <Header />
-            <DashboardOverview />
-            {/* You can add more dashboard sections based on role */}
-            {user.role === "admin" && (
-                <div className="p-8 text-gray-700 font-semibold">
-                    Admin-only panel: manage users, listings, etc.
-                </div>
-            )}
-            {user.role === "host" && (
-                <div className="p-8 text-gray-700 font-semibold">
-                    Host panel: view bookings, manage listings.
-                </div>
-            )}
-            {user.role === "user" && (
-                <div className="p-8 text-gray-700 font-semibold">
-                    User panel: view your bookings and reviews.
-                </div>
-            )}
+            <Header userName={user.fullName || user.username || user.email} onLogout={handleLogout} />
+            <main className="p-8">
+                <DashboardOverview userName={user.fullName || user.username || user.email} role="customer" />
+            </main>
         </div>
     );
 }

@@ -1,24 +1,30 @@
 "use client";
 
 import React from "react";
-import { Home, Users, CheckCircle, Clock } from "lucide-react";
-import { useAuth } from "@/context/AuthContext"
+import { CheckCircle, Clock, Users } from "lucide-react";
 
-export default function DashboardOverview() {
-    const { user } = useAuth();
+interface Props {
+    userName: string;
+    role: "customer";
+}
+
+export default function DashboardOverview({ userName, role }: Props) {
+    // Only customer stats
+    const stats = [
+        { icon: <CheckCircle />, label: "Your Bookings", value: "3" },
+        { icon: <Clock />, label: "Pending Requests", value: "1" },
+        { icon: <Users />, label: "Reviews Given", value: "10" },
+    ];
 
     return (
-        <div className="flex flex-col gap-8 p-8">
-            <h2 className="text-2xl font-bold text-[#1a3a4a]">
-                Welcome back, {user?.email}!
-            </h2>
+        <div className="flex flex-col gap-8">
+            <h2 className="text-2xl font-bold text-[#1a3a4a]">Welcome back, {userName}!</h2>
             <p className="text-gray-500">Here is what's happening with your bookings today.</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard icon={<Home />} label="Total Listings" value="12" />
-                <StatCard icon={<CheckCircle />} label="Active Bookings" value="5" />
-                <StatCard icon={<Clock />} label="Pending Requests" value="3" />
-                <StatCard icon={<Users />} label="Total Reviews" value="48" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {stats.map((s, i) => (
+                    <StatCard key={i} icon={s.icon} label={s.label} value={s.value} />
+                ))}
             </div>
         </div>
     );

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, Lock } from "lucide-react";
-import { login as loginApi } from "@/lib/api/auth";
 import { loginSchema, LoginFormData } from "../schema";
+import { login as loginApi } from "@/lib/api/auth";
+import { setAuthToken, setUserData } from "@/lib/cookie";
 
 export default function LoginForm() {
     const router = useRouter();
@@ -19,19 +20,23 @@ export default function LoginForm() {
     const onSubmit = async (data: LoginFormData) => {
         setLoading(true);
         try {
-            const res = await loginApi(data); // backend response: { success, token, data: { _id, email, role } }
-
+            const res = await loginApi(data);
             if (res.success) {
-                // Store token & user info (optional localStorage for demo, cookies preferred)
-                localStorage.setItem("token", res.token);
-                localStorage.setItem("userData", JSON.stringify(res.data));
-
-                console.log("Login success:", res.data);
+                // Save cookies
+                await setAuthToken(res.token);
+                await setUserData(res.data);
 
                 // Redirect based on role
-                if (res.data.role === "admin") router.replace("/dashboard/admin");
-                else if (res.data.role === "host") router.replace("/dashboard/host");
-                else router.replace("/dashboard/user");
+                switch (res.data.role) {
+                    case "admin":
+                        router.replace("/dashboard/admin");
+                        break;
+                    case "host":
+                        router.replace("/dashboard/host");
+                        break;
+                    default:
+                        router.replace("/dashboard/user");
+                }
             } else {
                 alert(res.message || "Login failed");
             }
@@ -43,29 +48,25 @@ export default function LoginForm() {
     };
 
     return (
-        <div className="flex flex-col gap-6 bg-white p-10 rounded-lg shadow-md w-96">
-            <h2 className="text-2xl font-bold text-gray-800">Login</h2>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+            <InputField label="Email" icon={<Mail />} type="email" {...register("email")} error={errors.email?.message} />
+            <InputField label="Password" icon={<Lock />} type="password" {...register("password")} error={errors.password?.message} />
 
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-                <InputField label="Email" icon={<Mail size={18} />} type="email" {...register("email")} error={errors.email?.message} />
-                <InputField label="Password" icon={<Lock size={18} />} type="password" {...register("password")} error={errors.password?.message} />
-
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="mt-4 bg-[#1a3a4a] text-white py-3 rounded-lg font-bold hover:bg-[#142836] transition disabled:opacity-60"
-                >
-                    {loading ? "Logging in..." : "Login"}
-                </button>
-            </form>
-        </div>
+            <button
+                type="submit"
+                disabled={loading}
+                className="mt-4 bg-[#1a3a4a] text-white py-3 rounded-lg font-bold hover:bg-[#142836] transition disabled:opacity-60"
+            >
+                {loading ? "Logging in..." : "Login"}
+            </button>
+        </form>
     );
 }
 
 function InputField({ label, icon, type = "text", error, ...props }: any) {
     return (
         <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-gray-700">{label}</label>
+            <label className="text-sm font-semibold">{label}</label>
             <div className="flex items-center border border-gray-300 rounded-lg px-3">
                 {icon}
                 <input type={type} className="w-full p-3 outline-none border-none text-sm" {...props} />
