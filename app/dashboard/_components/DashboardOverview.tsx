@@ -2,12 +2,18 @@
 
 import React from "react";
 import { Home, Users, CheckCircle, Clock } from "lucide-react";
+import { useAuth } from "@/context/AuthContext"
 
-export default function DashboardOverview({ userName }: { userName: string }) {
+export default function DashboardOverview() {
+    const { user } = useAuth();
+
     return (
-        <div className="flex flex-col gap-8">
-            <h2 className="text-2xl font-bold text-[#1a3a4a]">Welcome back, {userName}!</h2>
+        <div className="flex flex-col gap-8 p-8">
+            <h2 className="text-2xl font-bold text-[#1a3a4a]">
+                Welcome back, {user?.email}!
+            </h2>
             <p className="text-gray-500">Here is what's happening with your bookings today.</p>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard icon={<Home />} label="Total Listings" value="12" />
                 <StatCard icon={<CheckCircle />} label="Active Bookings" value="5" />

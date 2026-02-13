@@ -2,7 +2,6 @@
 
 import { ReactNode } from "react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-// import { AdminProvider } from "../context/AdminContext";
 import ProtectedRoute from "@/app/component/ProtectedRoute";
 import { AdminProvider } from "./context/AdminContext";
 
@@ -26,7 +25,7 @@ function AdminShell({ children }: { children: ReactNode }) {
             {/* Sidebar */}
             <aside className="w-64 bg-gray-900 text-white p-6 flex flex-col">
                 <h2 className="text-xl font-bold">Admin Panel</h2>
-                <p className="text-sm text-gray-400 mt-1">{user?.name}</p>
+                <p className="text-sm text-gray-400 mt-1">{user?.email}</p>
 
                 <nav className="mt-6 flex-1 space-y-2">
                     <NavLink href="/admin/dashboard">Dashboard</NavLink>

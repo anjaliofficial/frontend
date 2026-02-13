@@ -1,4 +1,5 @@
 "use client";
+
 import React from "react";
 import RegisterForm from "@/app/(auth)/_components/RegisterForm";
 
@@ -14,6 +15,7 @@ export default function RegisterPage() {
                         className="w-full h-full object-cover"
                     />
                 </div>
+
                 {/* Right Side Form */}
                 <div className="w-1/2 p-10 flex flex-col justify-center">
                     <RegisterForm />

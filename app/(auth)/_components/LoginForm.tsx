@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, Lock } from "lucide-react";
-import { login } from "@/lib/api/auth";
+import { login as loginApi } from "@/lib/api/auth";
 import { loginSchema, LoginFormData } from "../schema";
 
 export default function LoginForm() {
@@ -19,17 +19,19 @@ export default function LoginForm() {
     const onSubmit = async (data: LoginFormData) => {
         setLoading(true);
         try {
-            const res = await login(data); // { success, token, userName }
+            const res = await loginApi(data); // backend response: { success, token, data: { _id, email, role } }
 
             if (res.success) {
-                // Store auth info
+                // Store token & user info (optional localStorage for demo, cookies preferred)
                 localStorage.setItem("token", res.token);
-                localStorage.setItem("userName", res.userName);
+                localStorage.setItem("userData", JSON.stringify(res.data));
 
-                console.log("Login success:", res.userName);
+                console.log("Login success:", res.data);
 
-                // Force redirect
-                router.replace("/dashboard");
+                // Redirect based on role
+                if (res.data.role === "admin") router.replace("/dashboard/admin");
+                else if (res.data.role === "host") router.replace("/dashboard/host");
+                else router.replace("/dashboard/user");
             } else {
                 alert(res.message || "Login failed");
             }
@@ -42,7 +44,7 @@ export default function LoginForm() {
 
     return (
         <div className="flex flex-col gap-6 bg-white p-10 rounded-lg shadow-md w-96">
-            <h2 className="text-2xl font-bold text-gray-800">Login to Sajilo Baas</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Login</h2>
 
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
                 <InputField label="Email" icon={<Mail size={18} />} type="email" {...register("email")} error={errors.email?.message} />
@@ -51,7 +53,7 @@ export default function LoginForm() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="mt-4 bg-[#1a3a4a] text-white py-3 rounded-lg font-bold"
+                    className="mt-4 bg-[#1a3a4a] text-white py-3 rounded-lg font-bold hover:bg-[#142836] transition disabled:opacity-60"
                 >
                     {loading ? "Logging in..." : "Login"}
                 </button>

@@ -1,9 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-// import ProtectedRoute from "../../../components/ProtectedRoute";
 import { useAdmin } from "../../context/AdminContext";
-// import { useAuth } from "../../../context/AuthContext";
 import { useParams } from "next/navigation";
 import ProtectedRoute from "@/app/component/ProtectedRoute";
 
@@ -13,10 +11,21 @@ export default function PostViewPage() {
     const { user } = useAuth();
 
     const post = posts.find(p => p.id === Number(id));
-    if (!post) return <ProtectedRoute adminOnly={false}><p>Post not found</p></ProtectedRoute>;
 
-    if (user?.role !== "admin" && user?.role !== "host" && post.userId !== user?.id) {
-        return <ProtectedRoute adminOnly={false}><p>Access denied</p></ProtectedRoute>;
+    if (!post) {
+        return (
+            <ProtectedRoute adminOnly={false}>
+                <p>Post not found</p>
+            </ProtectedRoute>
+        );
+    }
+
+    if (user && user.role !== "admin" && user.role !== "host" && post.userId !== Number(user._id)) {
+        return (
+            <ProtectedRoute adminOnly={false}>
+                <p>Access denied</p>
+            </ProtectedRoute>
+        );
     }
 
     const author = users.find(u => u.id === post.userId)?.name || "Unknown";
