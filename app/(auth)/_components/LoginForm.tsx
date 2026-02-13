@@ -20,22 +20,24 @@ export default function LoginForm() {
     const onSubmit = async (data: LoginFormData) => {
         setLoading(true);
         try {
-            const res = await loginApi(data);
+            const res = await loginApi(data); // call backend
+
             if (res.success) {
-                // Save cookies
+                // Save token + user data server-side (HTTP-only cookie)
                 await setAuthToken(res.token);
                 await setUserData(res.data);
 
                 // Redirect based on role
                 switch (res.data.role) {
-                    case "admin":
-                        router.replace("/dashboard/admin");
+                    case "customer":
+                        router.replace("/dashboard");
                         break;
                     case "host":
-                        router.replace("/dashboard/host");
+                    case "admin":
+                        alert(`Role "${res.data.role}" detected. Dashboard not implemented yet.`);
                         break;
                     default:
-                        router.replace("/dashboard/user");
+                        alert("Unknown role");
                 }
             } else {
                 alert(res.message || "Login failed");

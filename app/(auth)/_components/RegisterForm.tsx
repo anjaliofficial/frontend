@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, Lock, User, Phone, MapPin } from "lucide-react";
 import { registerSchema, RegisterFormData } from "../schema";
 import { register as registerApi } from "@/lib/api/auth";
+import { setAuthToken, setUserData } from "@/lib/cookie";
 
 export default function RegisterForm() {
     const router = useRouter();
@@ -20,7 +21,14 @@ export default function RegisterForm() {
         setLoading(true);
         try {
             const res = await registerApi(data);
+
             if (res.success) {
+                // Optionally auto-login after registration
+                if (res.token && res.data) {
+                    await setAuthToken(res.token);
+                    await setUserData(res.data);
+                }
+
                 alert("Registration successful. Please login.");
                 router.push("/login");
             } else {
@@ -42,13 +50,16 @@ export default function RegisterForm() {
             <InputField label="Phone" icon={<Phone />} type="tel" {...register("phoneNumber")} error={errors.phoneNumber?.message} />
             <InputField label="Address" icon={<MapPin />} {...register("address")} error={errors.address?.message} />
 
-            <div className="flex gap-4">
-                {["customer", "host", "admin"].map((role) => (
-                    <label key={role} className="flex items-center gap-2">
-                        <input type="radio" value={role} {...register("role")} />
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
-                    </label>
-                ))}
+            <div className="flex gap-4 items-center mt-2">
+                <label>
+                    <input type="radio" value="customer" {...register("role")} defaultChecked /> Customer
+                </label>
+                <label>
+                    <input type="radio" value="host" {...register("role")} /> Host
+                </label>
+                <label>
+                    <input type="radio" value="admin" {...register("role")} /> Admin
+                </label>
             </div>
             {errors.role && <span className="text-red-500 text-xs">{errors.role.message}</span>}
 
