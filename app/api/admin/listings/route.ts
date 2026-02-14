@@ -11,13 +11,15 @@ export async function GET(req: NextRequest) {
       `${API_BASE}/admin/listings${queryString ? `?${queryString}` : ""}`,
     );
 
-    const token = req.cookies.get("token")?.value;
+    const cookieToken = req.cookies.get("token")?.value;
+    const headerAuth = req.headers.get("authorization");
+    const authHeader = cookieToken ? `Bearer ${cookieToken}` : headerAuth;
 
     const response = await fetch(url.toString(), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
     });
 
@@ -38,7 +40,9 @@ export async function POST(req: NextRequest) {
     const action = searchParams.get("action");
     const listingId = searchParams.get("id");
 
-    const token = req.cookies.get("token")?.value;
+    const cookieToken = req.cookies.get("token")?.value;
+    const headerAuth = req.headers.get("authorization");
+    const authHeader = cookieToken ? `Bearer ${cookieToken}` : headerAuth;
     const body = await req.json();
 
     let url = `${API_BASE}/admin/listings`;
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
       body: JSON.stringify(body),
     });
@@ -78,13 +82,15 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const token = req.cookies.get("token")?.value;
+    const cookieToken = req.cookies.get("token")?.value;
+    const headerAuth = req.headers.get("authorization");
+    const authHeader = cookieToken ? `Bearer ${cookieToken}` : headerAuth;
 
     const response = await fetch(`${API_BASE}/admin/listings/${listingId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
     });
 

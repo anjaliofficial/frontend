@@ -5,13 +5,15 @@ const API_BASE =
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.get("token")?.value;
+    const cookieToken = req.cookies.get("token")?.value;
+    const headerAuth = req.headers.get("authorization");
+    const authHeader = cookieToken ? `Bearer ${cookieToken}` : headerAuth;
 
     const response = await fetch(`${API_BASE}/admin/dashboard/stats`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
     });
 

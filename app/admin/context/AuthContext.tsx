@@ -2,7 +2,12 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { logoutUser } from "@/lib/actions/auth-action";
-import { clearToken, clearUserData, getUserData } from "@/lib/auth/storage";
+import {
+    clearToken,
+    clearUserData,
+    getUserData,
+    setUserData,
+} from "@/lib/auth/storage";
 
 interface User {
     id: string;
@@ -30,19 +35,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const syncUserFromStorage = () => {
         const storedUser = getUserData<User>();
         setUser(storedUser || null);
+        return storedUser || null;
+    };
+
+    const fetchUserFromCookie = async () => {
+        try {
+            const res = await fetch("/api/auth/me");
+            const data = await res.json();
+            if (data?.user) {
+                setUser(data.user);
+                setUserData(data.user);
+                return data.user as User;
+            }
+        } catch (error) {
+            console.error("Failed to fetch user from cookie:", error);
+        }
+        return null;
     };
 
     useEffect(() => {
         // Only run on client side
         if (typeof window === "undefined") return;
 
-        syncUserFromStorage();
-        setLoading(false);
+        const storedUser = syncUserFromStorage();
+        if (storedUser) {
+            setLoading(false);
+            return;
+        }
+
+        fetchUserFromCookie().finally(() => setLoading(false));
     }, []);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
-        syncUserFromStorage();
+        const storedUser = syncUserFromStorage();
+        if (!storedUser) {
+            void fetchUserFromCookie();
+        }
     }, [pathname]);
 
     useEffect(() => {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/admin/context/AuthContext";
-import Link from "next/link";
+import { getToken } from "@/lib/auth/storage";
 
 interface DashboardStats {
     users: {
@@ -44,22 +44,26 @@ interface DashboardStats {
 
 export default function AdminDashboard() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (authLoading) return;
         if (!user || user.role !== "admin") {
-            router.push("/auth/login");
+            router.push("/login");
             return;
         }
 
         fetchStats();
-    }, [user, router]);
+    }, [user, authLoading, router]);
 
     const fetchStats = async () => {
         try {
-            const response = await fetch("/api/admin/dashboard/stats");
+            const token = getToken();
+            const response = await fetch("/api/admin/dashboard/stats", {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
             const data = await response.json();
             if (data.success) {
                 setStats(data.stats);
@@ -90,33 +94,39 @@ export default function AdminDashboard() {
 
                 {/* Navigation Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <Link href="/admin/users">
-                        <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer">
-                            <div className="text-3xl font-bold text-blue-600">{stats?.users.total || 0}</div>
-                            <p className="text-gray-600 mt-2">Total Users</p>
-                            <span className="text-sm text-blue-600 mt-4 block">Manage Users →</span>
-                        </div>
-                    </Link>
+                    <button
+                        type="button"
+                        onClick={() => router.push("/admin/users")}
+                        className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-left"
+                    >
+                        <div className="text-3xl font-bold text-blue-600">{stats?.users.total || 0}</div>
+                        <p className="text-gray-600 mt-2">Total Users</p>
+                        <span className="text-sm text-blue-600 mt-4 block">Manage Users →</span>
+                    </button>
 
-                    <Link href="/admin/listings">
-                        <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer">
-                            <div className="text-3xl font-bold text-green-600">{stats?.listings.total || 0}</div>
-                            <p className="text-gray-600 mt-2">Total Listings</p>
-                            <span className="text-sm text-green-600 mt-4 block">
-                                Pending: {stats?.listings.pending}
-                            </span>
-                        </div>
-                    </Link>
+                    <button
+                        type="button"
+                        onClick={() => router.push("/admin/listings")}
+                        className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-left"
+                    >
+                        <div className="text-3xl font-bold text-green-600">{stats?.listings.total || 0}</div>
+                        <p className="text-gray-600 mt-2">Total Listings</p>
+                        <span className="text-sm text-green-600 mt-4 block">
+                            Pending: {stats?.listings.pending}
+                        </span>
+                    </button>
 
-                    <Link href="/admin/bookings">
-                        <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer">
-                            <div className="text-3xl font-bold text-purple-600">
-                                {stats?.bookings.total || 0}
-                            </div>
-                            <p className="text-gray-600 mt-2">Total Bookings</p>
-                            <span className="text-sm text-purple-600 mt-4 block">Manage Bookings →</span>
+                    <button
+                        type="button"
+                        onClick={() => router.push("/admin/bookings")}
+                        className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-left"
+                    >
+                        <div className="text-3xl font-bold text-purple-600">
+                            {stats?.bookings.total || 0}
                         </div>
-                    </Link>
+                        <p className="text-gray-600 mt-2">Total Bookings</p>
+                        <span className="text-sm text-purple-600 mt-4 block">Manage Bookings →</span>
+                    </button>
 
                     {/* Transaction Management Removed - Not needed for now */}
                     {/* <Link href="/admin/transactions">

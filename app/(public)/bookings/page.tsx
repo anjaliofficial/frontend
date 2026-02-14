@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 interface Booking {
     _id: string;
-    listingId: { title: string; location: string; images: string[] };
+    listingId: { _id: string; title: string; location: string; images: string[] };
     hostId: { fullName: string; phoneNumber: string };
     checkInDate: string;
     checkOutDate: string;
@@ -123,8 +123,8 @@ export default function BookingsPage() {
                                 key={status}
                                 onClick={() => setFilter(status)}
                                 className={`px-4 py-2 rounded-lg font-semibold transition capitalize ${filter === status
-                                        ? "bg-[#1a3a4a] text-white"
-                                        : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+                                    ? "bg-[#1a3a4a] text-white"
+                                    : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
                                     }`}
                             >
                                 {status === "all" ? "All Bookings" : status}
@@ -227,8 +227,8 @@ export default function BookingsPage() {
                                                 </span>
                                                 <span
                                                     className={`px-3 py-1 rounded-full text-sm font-semibold border capitalize ${booking.paymentStatus === "paid"
-                                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                            : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                        : "bg-yellow-50 text-yellow-700 border-yellow-200"
                                                         }`}
                                                 >
                                                     {booking.paymentStatus}
@@ -248,7 +248,7 @@ export default function BookingsPage() {
                                         <div className="flex gap-2">
                                             {booking.status === "pending" && (
                                                 <button
-                                                    onClick={() => handleCancelBooking(booking._id)}
+                                                    onClick={() => handleCancelBooking(booking._id.toString())}
                                                     className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition"
                                                 >
                                                     Cancel Booking
@@ -257,7 +257,7 @@ export default function BookingsPage() {
                                             <button
                                                 onClick={() =>
                                                     router.push(
-                                                        `/listings/${booking.listingId._id}`
+                                                        `/listings/${booking.listingId._id.toString()}`
                                                     )
                                                 }
                                                 className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold hover:bg-slate-200 transition"

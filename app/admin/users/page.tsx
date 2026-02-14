@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/admin/context/AuthContext";
+import { getToken } from "@/lib/auth/storage";
 import Link from "next/link";
 
 interface User {
@@ -17,7 +18,7 @@ interface User {
 
 export default function UsersManagement() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({ role: "", status: "", search: "" });
@@ -26,12 +27,13 @@ export default function UsersManagement() {
     const [total, setTotal] = useState(0);
 
     useEffect(() => {
+        if (authLoading) return;
         if (!user || user.role !== "admin") {
-            router.push("/auth/login");
+            router.push("/login");
             return;
         }
         fetchUsers();
-    }, [user, router, filters, page]);
+    }, [user, authLoading, router, filters, page]);
 
     const fetchUsers = async () => {
         try {
@@ -43,7 +45,10 @@ export default function UsersManagement() {
             params.append("page", String(page));
             params.append("limit", String(limit));
 
-            const response = await fetch(`/api/admin/users?${params}`);
+            const token = getToken();
+            const response = await fetch(`/api/admin/users?${params}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
             const data = await response.json();
             if (data.success) {
                 setUsers(data.users);
@@ -58,9 +63,17 @@ export default function UsersManagement() {
 
     const handleStatusChange = async (userId: string, newStatus: string) => {
         try {
-            const endpoint = `/api/admin/users/${userId}/${newStatus === "active" ? "activate" : newStatus === "suspended" ? "suspend" : "ban"
-                }`;
-            const response = await fetch(endpoint, { method: "POST" });
+            const action = newStatus === "active"
+                ? "activate"
+                : newStatus === "suspended"
+                    ? "suspend"
+                    : "ban";
+            const endpoint = `/api/admin/users?action=${action}&id=${userId}`;
+            const token = getToken();
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
             const data = await response.json();
             if (data.success) {
                 fetchUsers();
@@ -73,7 +86,11 @@ export default function UsersManagement() {
     const handleDelete = async (userId: string) => {
         if (!confirm("Are you sure you want to delete this user?")) return;
         try {
-            const response = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+            const token = getToken();
+            const response = await fetch(`/api/admin/users?id=${userId}`, {
+                method: "DELETE",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
             const data = await response.json();
             if (data.success) {
                 fetchUsers();
@@ -176,10 +193,10 @@ export default function UsersManagement() {
                                                     value={u.status}
                                                     onChange={(e) => handleStatusChange(u._id, e.target.value)}
                                                     className={`px-3 py-1 rounded-full text-sm font-semibold border-0 cursor-pointer ${u.status === "active"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : u.status === "suspended"
-                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                : "bg-red-100 text-red-800"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : u.status === "suspended"
+                                                            ? "bg-yellow-100 text-yellow-800"
+                                                            : "bg-red-100 text-red-800"
                                                         }`}
                                                 >
                                                     <option value="active">Active</option>

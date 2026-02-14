@@ -23,7 +23,7 @@ interface Transaction {
 
 export default function TransactionsManagement() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -36,12 +36,13 @@ export default function TransactionsManagement() {
     const [totalAmount, setTotalAmount] = useState(0);
 
     useEffect(() => {
+        if (authLoading) return;
         if (!user || user.role !== "admin") {
-            router.push("/auth/login");
+            router.push("/login");
             return;
         }
         fetchTransactions();
-    }, [user, router, filters, page]);
+    }, [user, authLoading, router, filters, page]);
 
     const fetchTransactions = async () => {
         try {

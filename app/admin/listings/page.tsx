@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/admin/context/AuthContext";
+import { getToken } from "@/lib/auth/storage";
 import Link from "next/link";
 
 interface Listing {
@@ -18,7 +19,7 @@ interface Listing {
 
 export default function ListingsManagement() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [listings, setListings] = useState<Listing[]>([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -31,12 +32,13 @@ export default function ListingsManagement() {
     const [total, setTotal] = useState(0);
 
     useEffect(() => {
+        if (authLoading) return;
         if (!user || user.role !== "admin") {
-            router.push("/auth/login");
+            router.push("/login");
             return;
         }
         fetchListings();
-    }, [user, router, filters, page]);
+    }, [user, authLoading, router, filters, page]);
 
     const fetchListings = async () => {
         try {
@@ -48,7 +50,10 @@ export default function ListingsManagement() {
             params.append("page", String(page));
             params.append("limit", String(limit));
 
-            const response = await fetch(`/api/admin/listings?${params}`);
+            const token = getToken();
+            const response = await fetch(`/api/admin/listings?${params}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
             const data = await response.json();
             if (data.success) {
                 setListings(data.listings);
@@ -63,8 +68,10 @@ export default function ListingsManagement() {
 
     const handleApprove = async (listingId: string) => {
         try {
-            const response = await fetch(`/api/admin/listings/${listingId}/approve`, {
+            const token = getToken();
+            const response = await fetch(`/api/admin/listings?action=approve&id=${listingId}`, {
                 method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });
             const data = await response.json();
             if (data.success) {
@@ -80,9 +87,13 @@ export default function ListingsManagement() {
         if (!reason) return;
 
         try {
-            const response = await fetch(`/api/admin/listings/${listingId}/reject`, {
+            const token = getToken();
+            const response = await fetch(`/api/admin/listings?action=reject&id=${listingId}`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({ reason }),
             });
             const data = await response.json();
@@ -97,8 +108,10 @@ export default function ListingsManagement() {
     const handleDelete = async (listingId: string) => {
         if (!confirm("Are you sure you want to delete this listing?")) return;
         try {
-            const response = await fetch(`/api/admin/listings/${listingId}`, {
+            const token = getToken();
+            const response = await fetch(`/api/admin/listings?id=${listingId}`, {
                 method: "DELETE",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });
             const data = await response.json();
             if (data.success) {
@@ -212,10 +225,10 @@ export default function ListingsManagement() {
                                             <td className="px-6 py-4">
                                                 <span
                                                     className={`px-3 py-1 rounded-full text-sm font-semibold ${listing.status === "approved"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : listing.status === "pending"
-                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                : "bg-red-100 text-red-800"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : listing.status === "pending"
+                                                            ? "bg-yellow-100 text-yellow-800"
+                                                            : "bg-red-100 text-red-800"
                                                         }`}
                                                 >
                                                     {listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/admin/context/AuthContext";
+import { getToken } from "@/lib/auth/storage";
 import Link from "next/link";
 
 interface Booking {
@@ -21,7 +22,7 @@ interface Booking {
 
 export default function BookingsManagement() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -33,12 +34,13 @@ export default function BookingsManagement() {
     const [total, setTotal] = useState(0);
 
     useEffect(() => {
+        if (authLoading) return;
         if (!user || user.role !== "admin") {
-            router.push("/auth/login");
+            router.push("/login");
             return;
         }
         fetchBookings();
-    }, [user, router, filters, page]);
+    }, [user, authLoading, router, filters, page]);
 
     const fetchBookings = async () => {
         try {
@@ -49,7 +51,10 @@ export default function BookingsManagement() {
             params.append("page", String(page));
             params.append("limit", String(limit));
 
-            const response = await fetch(`/api/admin/bookings?${params}`);
+            const token = getToken();
+            const response = await fetch(`/api/admin/bookings?${params}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
             const data = await response.json();
             if (data.success) {
                 setBookings(data.bookings);
@@ -64,8 +69,10 @@ export default function BookingsManagement() {
 
     const handleConfirm = async (bookingId: string) => {
         try {
-            const response = await fetch(`/api/admin/bookings/${bookingId}/confirm`, {
+            const token = getToken();
+            const response = await fetch(`/api/admin/bookings?action=confirm&id=${bookingId}`, {
                 method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });
             const data = await response.json();
             if (data.success) {
@@ -79,8 +86,10 @@ export default function BookingsManagement() {
     const handleCancel = async (bookingId: string) => {
         if (!confirm("Are you sure you want to cancel this booking?")) return;
         try {
-            const response = await fetch(`/api/admin/bookings/${bookingId}/cancel`, {
+            const token = getToken();
+            const response = await fetch(`/api/admin/bookings?action=cancel&id=${bookingId}`, {
                 method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });
             const data = await response.json();
             if (data.success) {
@@ -210,10 +219,10 @@ export default function BookingsManagement() {
                                             <td className="px-6 py-4">
                                                 <span
                                                     className={`px-3 py-1 rounded-full text-sm font-semibold ${booking.paymentStatus === "paid"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : booking.paymentStatus === "unpaid"
-                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                : "bg-blue-100 text-blue-800"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : booking.paymentStatus === "unpaid"
+                                                            ? "bg-yellow-100 text-yellow-800"
+                                                            : "bg-blue-100 text-blue-800"
                                                         }`}
                                                 >
                                                     {booking.paymentStatus.charAt(0).toUpperCase() +
