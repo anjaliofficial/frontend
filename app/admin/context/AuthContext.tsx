@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { logoutUser } from "@/lib/actions/auth-action";
 import { clearToken, clearUserData, getUserData } from "@/lib/auth/storage";
 
@@ -25,15 +25,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const pathname = usePathname();
+
+    const syncUserFromStorage = () => {
+        const storedUser = getUserData<User>();
+        setUser(storedUser || null);
+    };
 
     useEffect(() => {
         // Only run on client side
         if (typeof window === "undefined") return;
 
-        const storedUser = getUserData<User>();
-        setUser(storedUser || null);
-
+        syncUserFromStorage();
         setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        syncUserFromStorage();
+    }, [pathname]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === "user_data") {
+                syncUserFromStorage();
+            }
+        };
+
+        window.addEventListener("storage", handleStorage);
+        return () => window.removeEventListener("storage", handleStorage);
     }, []);
 
     const logout = async () => {

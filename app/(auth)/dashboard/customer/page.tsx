@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
 
@@ -39,9 +40,12 @@ export default function CustomerDashboard() {
                     <p><strong>Role:</strong> {user.role}</p>
                 </div>
                 <div className="mt-6 flex gap-4">
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                    <Link
+                        href="/listings"
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                    >
                         Browse Listings
-                    </button>
+                    </Link>
                     <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
                         My Bookings
                     </button>
