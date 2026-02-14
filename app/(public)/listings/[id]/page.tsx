@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 const RAW_API_BASE =
@@ -18,8 +18,14 @@ const toImageUrl = (path?: string) => {
     return `${API_BASE}${cleaned}`;
 };
 
+interface BookingFormData {
+    checkInDate: string;
+    checkOutDate: string;
+}
+
 export default function ListingDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const listingId = params?.id as string | undefined;
 
     const [listing, setListing] = useState<any | null>(null);
@@ -30,6 +36,16 @@ export default function ListingDetailPage() {
         availableTo: "",
     });
     const [availability, setAvailability] = useState<boolean | null>(null);
+
+    // Booking form state
+    const [showBookingForm, setShowBookingForm] = useState(false);
+    const [bookingData, setBookingData] = useState<BookingFormData>({
+        checkInDate: "",
+        checkOutDate: "",
+    });
+    const [bookingLoading, setBookingLoading] = useState(false);
+    const [bookingError, setBookingError] = useState("");
+    const [bookingSuccess, setBookingSuccess] = useState(false);
 
     const queryString = useMemo(() => {
         const params = new URLSearchParams();
@@ -68,6 +84,53 @@ export default function ListingDetailPage() {
         }
     };
 
+    const handleBooking = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setBookingError("");
+        setBookingSuccess(false);
+
+        if (!bookingData.checkInDate || !bookingData.checkOutDate) {
+            setBookingError("Please select both check-in and check-out dates");
+            return;
+        }
+
+        setBookingLoading(true);
+
+        try {
+            const res = await fetch("/api/bookings", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    listingId,
+                    checkInDate: new Date(bookingData.checkInDate),
+                    checkOutDate: new Date(bookingData.checkOutDate),
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setBookingError(data?.message || "Booking failed");
+                return;
+            }
+
+            setBookingSuccess(true);
+            setShowBookingForm(false);
+            setBookingData({ checkInDate: "", checkOutDate: "" });
+
+            // Redirect to booking confirmation or my bookings page
+            setTimeout(() => {
+                router.push("/bookings");
+            }, 2000);
+        } catch (err) {
+            setBookingError("Failed to create booking");
+        } finally {
+            setBookingLoading(false);
+        }
+    };
+
     useEffect(() => {
         void fetchListing();
     }, [listingId, queryString]);
@@ -88,6 +151,18 @@ export default function ListingDetailPage() {
 
     const images = Array.isArray(listing.images) ? listing.images : [];
     const host = listing.hostId || {};
+
+    // Calculate total for booking
+    let totalNights = 0;
+    let totalPrice = 0;
+    if (bookingData.checkInDate && bookingData.checkOutDate) {
+        const checkIn = new Date(bookingData.checkInDate);
+        const checkOut = new Date(bookingData.checkOutDate);
+        totalNights = Math.ceil(
+            (checkOut.getTime() - checkIn.getTime()) / (24 * 60 * 60 * 1000)
+        );
+        totalPrice = totalNights * listing.pricePerNight;
+    }
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -130,7 +205,7 @@ export default function ListingDetailPage() {
                     <aside className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Price</p>
-                            <p className="text-3xl font-bold text-[#1a3a4a]">{listing.pricePerNight}</p>
+                            <p className="text-3xl font-bold text-[#1a3a4a]">${listing.pricePerNight}</p>
                             <p className="text-sm text-slate-500">Per night</p>
                         </div>
 
@@ -166,10 +241,19 @@ export default function ListingDetailPage() {
                                     className={`text-sm font-semibold ${availability ? "text-emerald-600" : "text-red-600"
                                         }`}
                                 >
-                                    {availability ? "Available for selected dates" : "Not available"}
+                                    {availability ? "✓ Available for selected dates" : "✗ Not available"}
                                 </p>
                             )}
                         </div>
+
+                        {availability && (
+                            <button
+                                onClick={() => setShowBookingForm(true)}
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition"
+                            >
+                                Reserve Now
+                            </button>
+                        )}
                     </aside>
                 </section>
 
@@ -201,6 +285,89 @@ export default function ListingDetailPage() {
                     </div>
                 </section>
             </div>
+
+            {/* Booking Form Modal */}
+            {showBookingForm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-8 space-y-6">
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-bold text-slate-900">Complete your booking</h2>
+                            <p className="text-slate-600">{listing.title}</p>
+                        </div>
+
+                        {bookingSuccess && (
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-emerald-700">
+                                ✓ Booking created successfully! Redirecting...
+                            </div>
+                        )}
+
+                        {bookingError && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                                {bookingError}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleBooking} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                                    Check-in Date
+                                </label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={bookingData.checkInDate}
+                                    onChange={(e) =>
+                                        setBookingData({ ...bookingData, checkInDate: e.target.value })
+                                    }
+                                    className="w-full border border-slate-300 rounded-lg px-4 py-2"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                                    Check-out Date
+                                </label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={bookingData.checkOutDate}
+                                    onChange={(e) =>
+                                        setBookingData({ ...bookingData, checkOutDate: e.target.value })
+                                    }
+                                    className="w-full border border-slate-300 rounded-lg px-4 py-2"
+                                />
+                            </div>
+
+                            {totalNights > 0 && (
+                                <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                                    <div className="flex justify-between text-slate-700">
+                                        <span>${listing.pricePerNight} × {totalNights} nights</span>
+                                        <span className="font-semibold">${totalPrice}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowBookingForm(false)}
+                                    disabled={bookingLoading}
+                                    className="flex-1 py-2 px-4 border border-slate-300 rounded-lg text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={bookingLoading}
+                                    className="flex-1 py-2 px-4 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50"
+                                >
+                                    {bookingLoading ? "Booking..." : "Confirm Booking"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

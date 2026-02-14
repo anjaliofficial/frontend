@@ -1,0 +1,277 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+interface Booking {
+    _id: string;
+    listingId: { title: string; location: string; images: string[] };
+    hostId: { fullName: string; phoneNumber: string };
+    checkInDate: string;
+    checkOutDate: string;
+    totalPrice: number;
+    totalNights: number;
+    status: string;
+    paymentStatus: string;
+    createdAt: string;
+}
+
+const RAW_API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5050";
+const API_BASE = RAW_API_BASE.endsWith("/api")
+    ? RAW_API_BASE.slice(0, -4)
+    : RAW_API_BASE;
+
+const toImageUrl = (path?: string) => {
+    if (!path) return "";
+    const normalized = path.replace(/\\/g, "/");
+    if (normalized.startsWith("http")) return normalized;
+    const cleaned = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `${API_BASE}${cleaned}`;
+};
+
+export default function BookingsPage() {
+    const router = useRouter();
+    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [filter, setFilter] = useState("all");
+
+    useEffect(() => {
+        fetchBookings();
+    }, [filter]);
+
+    const fetchBookings = async () => {
+        setLoading(true);
+        setError("");
+
+        try {
+            const url = `/api/bookings/my${filter !== "all" ? `?status=${filter}` : ""}`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data?.message || "Failed to load bookings");
+                setBookings([]);
+                return;
+            }
+
+            setBookings(data.bookings || []);
+        } catch (err) {
+            setError("Failed to load bookings");
+            setBookings([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCancelBooking = async (bookingId: string) => {
+        if (!confirm("Are you sure you want to cancel this booking?")) return;
+
+        try {
+            const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+                method: "POST",
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert(data?.message || "Failed to cancel booking");
+                return;
+            }
+
+            alert("Booking cancelled successfully");
+            await fetchBookings();
+        } catch (err) {
+            alert("Failed to cancel booking");
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "pending":
+                return "bg-yellow-50 text-yellow-700 border-yellow-200";
+            case "confirmed":
+                return "bg-emerald-50 text-emerald-700 border-emerald-200";
+            case "cancelled":
+                return "bg-red-50 text-red-700 border-red-200";
+            case "completed":
+                return "bg-blue-50 text-blue-700 border-blue-200";
+            default:
+                return "bg-slate-50 text-slate-700 border-slate-200";
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50">
+            <header className="bg-[#1a3a4a] text-white py-8">
+                <div className="max-w-6xl mx-auto px-6">
+                    <h1 className="text-4xl font-bold">My Bookings</h1>
+                    <p className="text-sky-100 mt-2">
+                        View and manage your reservations
+                    </p>
+                </div>
+            </header>
+
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                {/* Filter Tabs */}
+                <div className="flex gap-2 mb-6 flex-wrap">
+                    {["all", "pending", "confirmed", "completed", "cancelled"].map(
+                        (status) => (
+                            <button
+                                key={status}
+                                onClick={() => setFilter(status)}
+                                className={`px-4 py-2 rounded-lg font-semibold transition capitalize ${filter === status
+                                        ? "bg-[#1a3a4a] text-white"
+                                        : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+                                    }`}
+                            >
+                                {status === "all" ? "All Bookings" : status}
+                            </button>
+                        )
+                    )}
+                </div>
+
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6">
+                        {error}
+                    </div>
+                )}
+
+                {loading ? (
+                    <div className="text-center py-12 text-slate-500">
+                        Loading bookings...
+                    </div>
+                ) : bookings.length === 0 ? (
+                    <div className="text-center py-12">
+                        <p className="text-slate-600 mb-4">
+                            {filter === "all"
+                                ? "No bookings yet"
+                                : `No ${filter} bookings`}
+                        </p>
+                        <Link
+                            href="/listings"
+                            className="inline-block bg-emerald-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-emerald-700"
+                        >
+                            Browse Listings
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="grid gap-6">
+                        {bookings.map((booking) => (
+                            <div
+                                key={booking._id}
+                                className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition"
+                            >
+                                <div className="grid md:grid-cols-[200px_1fr_200px] gap-6 p-6">
+                                    {/* Image */}
+                                    <div className="flex-shrink-0">
+                                        {booking.listingId.images?.[0] ? (
+                                            <img
+                                                src={toImageUrl(booking.listingId.images[0])}
+                                                alt={booking.listingId.title}
+                                                className="h-40 w-full object-cover rounded-lg"
+                                            />
+                                        ) : (
+                                            <div className="h-40 bg-slate-200 rounded-lg flex items-center justify-center text-slate-400">
+                                                No image
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Details */}
+                                    <div className="space-y-3">
+                                        <Link
+                                            href={`/listings/${booking.listingId._id}`}
+                                            className="text-lg font-semibold text-[#1a3a4a] hover:text-emerald-600 line-clamp-2"
+                                        >
+                                            {booking.listingId.title}
+                                        </Link>
+                                        <p className="text-sm text-slate-600">
+                                            {booking.listingId.location}
+                                        </p>
+
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            <div>
+                                                <p className="text-slate-500">Check-in</p>
+                                                <p className="font-semibold">
+                                                    {new Date(booking.checkInDate).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-500">Check-out</p>
+                                                <p className="font-semibold">
+                                                    {new Date(booking.checkOutDate).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-sm text-slate-600">
+                                                Host: <span className="font-semibold">{booking.hostId.fullName}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Status & Price */}
+                                    <div className="space-y-3 flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex gap-2 mb-2 flex-wrap">
+                                                <span
+                                                    className={`px-3 py-1 rounded-full text-sm font-semibold border capitalize ${getStatusColor(
+                                                        booking.status
+                                                    )}`}
+                                                >
+                                                    {booking.status}
+                                                </span>
+                                                <span
+                                                    className={`px-3 py-1 rounded-full text-sm font-semibold border capitalize ${booking.paymentStatus === "paid"
+                                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                            : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                                        }`}
+                                                >
+                                                    {booking.paymentStatus}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-sm text-slate-600 mb-1">
+                                                {booking.totalNights} night{booking.totalNights > 1 ? "s" : ""}
+                                            </p>
+                                            <p className="text-2xl font-bold text-[#1a3a4a]">
+                                                ${booking.totalPrice}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            {booking.status === "pending" && (
+                                                <button
+                                                    onClick={() => handleCancelBooking(booking._id)}
+                                                    className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition"
+                                                >
+                                                    Cancel Booking
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() =>
+                                                    router.push(
+                                                        `/listings/${booking.listingId._id}`
+                                                    )
+                                                }
+                                                className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold hover:bg-slate-200 transition"
+                                            >
+                                                View Listing
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
