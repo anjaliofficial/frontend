@@ -1,88 +1,151 @@
 "use client";
-
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail, Lock, User, Phone, MapPin } from "lucide-react";
-import { registerSchema, RegisterFormData } from "../schema";
-import { register as registerApi } from "@/lib/api/auth";
-import { setAuthToken, setUserData } from "@/lib/cookie";
+import { registerUser } from "@/lib/actions/auth-action";
 
 export default function RegisterForm() {
-    const router = useRouter();
-    const [loading, setLoading] = useState(false);
-
-    const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
-        resolver: zodResolver(registerSchema),
+    const [form, setForm] = useState({
+        fullName: "",
+        email: "",
+        phoneNumber: "",
+        address: "",
+        password: "",
+        confirmPassword: "",
+        role: "customer"
     });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const router = useRouter();
 
-    const onSubmit = async (data: RegisterFormData) => {
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
         setLoading(true);
+
+        // Validate passwords match
+        if (form.password !== form.confirmPassword) {
+            setError("Passwords don't match");
+            setLoading(false);
+            return;
+        }
+
+        // Validate phone number is 10 digits
+        if (!/^\d{10}$/.test(form.phoneNumber)) {
+            setError("Phone number must be 10 digits");
+            setLoading(false);
+            return;
+        }
+
         try {
-            const res = await registerApi(data);
+            const res = await registerUser(form);
 
             if (res.success) {
-                // Optionally auto-login after registration
-                if (res.token && res.data) {
-                    await setAuthToken(res.token);
-                    await setUserData(res.data);
-                }
-
-                alert("Registration successful. Please login.");
+                alert("Registration successful! Please login.");
                 router.push("/login");
             } else {
-                alert(res.message || "Registration failed");
+                setError(res.message || "Registration failed");
+                setLoading(false);
             }
-        } catch (err: any) {
-            alert(err?.message || "Registration failed");
-        } finally {
+        } catch (err) {
+            setError("An error occurred");
             setLoading(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <InputField label="Full Name" icon={<User />} {...register("fullName")} error={errors.fullName?.message} />
-            <InputField label="Email" icon={<Mail />} type="email" {...register("email")} error={errors.email?.message} />
-            <InputField label="Password" icon={<Lock />} type="password" {...register("password")} error={errors.password?.message} />
-            <InputField label="Confirm Password" icon={<Lock />} type="password" {...register("confirmPassword")} error={errors.confirmPassword?.message} />
-            <InputField label="Phone" icon={<Phone />} type="tel" {...register("phoneNumber")} error={errors.phoneNumber?.message} />
-            <InputField label="Address" icon={<MapPin />} {...register("address")} error={errors.address?.message} />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-80 p-6 bg-white rounded shadow">
+            <h1 className="text-2xl font-bold text-center mb-4">Register</h1>
 
-            <div className="flex gap-4 items-center mt-2">
-                <label>
-                    <input type="radio" value="customer" {...register("role")} defaultChecked /> Customer
-                </label>
-                <label>
-                    <input type="radio" value="host" {...register("role")} /> Host
-                </label>
-                <label>
-                    <input type="radio" value="admin" {...register("role")} /> Admin
-                </label>
-            </div>
-            {errors.role && <span className="text-red-500 text-xs">{errors.role.message}</span>}
+            {error && (
+                <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                    {error}
+                </div>
+            )}
+
+            <input
+                className="border p-2 rounded"
+                type="text"
+                placeholder="Full Name"
+                value={form.fullName}
+                onChange={e => setForm({ ...form, fullName: e.target.value })}
+                required
+                disabled={loading}
+            />
+
+            <input
+                className="border p-2 rounded"
+                type="email"
+                placeholder="Email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                required
+                disabled={loading}
+            />
+
+            <input
+                className="border p-2 rounded"
+                type="tel"
+                placeholder="Phone Number (10 digits)"
+                value={form.phoneNumber}
+                onChange={e => setForm({ ...form, phoneNumber: e.target.value })}
+                required
+                disabled={loading}
+            />
+
+            <input
+                className="border p-2 rounded"
+                type="text"
+                placeholder="Address"
+                value={form.address}
+                onChange={e => setForm({ ...form, address: e.target.value })}
+                required
+                disabled={loading}
+            />
+
+            <select
+                className="border p-2 rounded"
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value })}
+                disabled={loading}
+            >
+                <option value="customer">Customer</option>
+                <option value="host">Host</option>
+            </select>
+
+            <input
+                className="border p-2 rounded"
+                type="password"
+                placeholder="Password (min 8 characters)"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                required
+                disabled={loading}
+            />
+
+            <input
+                className="border p-2 rounded"
+                type="password"
+                placeholder="Confirm Password"
+                value={form.confirmPassword}
+                onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                required
+                disabled={loading}
+            />
 
             <button
+                className="bg-blue-600 text-white p-2 rounded font-semibold hover:bg-blue-700 disabled:opacity-50"
                 type="submit"
                 disabled={loading}
-                className="mt-4 bg-[#1a3a4a] text-white py-3 rounded-lg font-bold hover:bg-[#142836] transition disabled:opacity-60"
             >
                 {loading ? "Registering..." : "Register"}
             </button>
-        </form>
-    );
-}
 
-function InputField({ label, icon, type = "text", error, ...props }: any) {
-    return (
-        <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold">{label}</label>
-            <div className="flex items-center border border-gray-300 rounded-lg px-3">
-                {icon}
-                <input type={type} className="w-full p-3 outline-none border-none text-sm" {...props} />
-            </div>
-            {error && <span className="text-red-500 text-xs">{error}</span>}
-        </div>
+            <p className="text-center text-sm">
+                Already have an account?{" "}
+                <a href="/login" className="text-blue-600 hover:underline">
+                    Login here
+                </a>
+            </p>
+        </form>
     );
 }

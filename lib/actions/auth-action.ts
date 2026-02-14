@@ -1,24 +1,99 @@
 "use server";
-import { login } from "@/lib/api/auth";
-import { setAuthToken, setUserData, clearAuthCookies } from "@/lib/cookie";
-import { redirect } from "next/navigation";
-import { Role } from "@/context/AuthContext";
+import { cookies } from "next/headers";
 
-// ...existing code...
-// allowedRoles = which roles can access this login/route
-export const handleLogin = async (data: { email: string; password: string }, allowedRoles: Role[]) => {
-  const res = await login(data);
+const API_BASE = "http://127.0.0.1:5050/api";
 
-  if (res.success && allowedRoles.includes(res.data.role)) {
-    await setAuthToken(res.token);
-    await setUserData(res.data);
-    return { success: true };
+export async function registerUser(form: {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  address: string;
+  password: string;
+  confirmPassword: string;
+  role: string;
+}) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { success: false, message: data.message || "Registration failed", user: null };
+    }
+
+    // Set cookie on server
+    const cookieStore = await cookies();
+    if (data.user) {
+      cookieStore.set("user_data", JSON.stringify(data.user), {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+
+    if (data.token) {
+      cookieStore.set("token", data.token, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+
+    // Return user data to client so it can store in localStorage
+    return { success: true, user: data.user };
+  } catch (error) {
+    return { success: false, message: "Connection failed", user: null };
   }
+}
 
-  return { success: false, message: "You are not authorized for this role" };
-};
+export async function loginUser(credentials: { email: string; password: string }) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    });
 
-export const handleLogout = async () => {
-  await clearAuthCookies();
-  redirect("/login");
-};
+    const data = await res.json();
+    
+    if (!res.ok || !data.user) {
+      return { success: false, message: data.message || "Login failed", user: null };
+    }
+
+    // Set cookie on server
+    const cookieStore = await cookies();
+    cookieStore.set("user_data", JSON.stringify(data.user), {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    if (data.token) {
+      cookieStore.set("token", data.token, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+
+    // Return user data to client so it can store in localStorage
+    return { success: true, user: data.user };
+  } catch (error) {
+    return { success: false, message: "Connection failed", user: null };
+  }
+}
+
+export async function logoutUser() {
+  const cookieStore = await cookies();
+  cookieStore.delete("user_data");
+  cookieStore.delete("token");
+  return { success: true };
+}

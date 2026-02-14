@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/admin/context/AuthContext";
 
 export default function ProtectedRoute({
     children,

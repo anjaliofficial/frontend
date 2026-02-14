@@ -1,57 +1,43 @@
 "use server";
-
 import { cookies } from "next/headers";
 
+export type Role = "customer" | "host" | "admin";
+
 export interface UserData {
-  _id: string;
+  id: string;
+  fullName: string;
   email: string;
-  username?: string;
-  role: "admin" | "host" | "customer";
-  createdAt?: string;
-  updatedAt?: string;
-  [key: string]: any;
+  role: Role;
+  phoneNumber: string;
+  address: string;
+  profilePicture: string;
 }
 
-// Set auth token (HTTP-only)
-export const setAuthToken = async (token: string) => {
-  const cookieStore = cookies();
-  (await cookieStore).set({
-    name: "auth_token",
-    value: token,
+export const setUserData = async (user: UserData) => {
+  const cookieStore = await cookies();
+  cookieStore.set("user_data", JSON.stringify(user), {
     httpOnly: true,
-    path: "/",
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
   });
 };
 
-// Get auth token
-export const getAuthToken = async (): Promise<string | null> => {
-  const cookieStore = cookies();
-  return (await cookieStore).get("auth_token")?.value || null;
-};
-
-// Set user data
-export const setUserData = async (userData: UserData) => {
-  const cookieStore = cookies();
-  (await cookieStore).set({
-    name: "user_data",
-    value: JSON.stringify(userData),
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-  });
-};
-
-// Get user data
 export const getUserData = async (): Promise<UserData | null> => {
-  const cookieStore = cookies();
-  const userData = (await cookieStore).get("user_data")?.value || null;
-  return userData ? JSON.parse(userData) : null;
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get("user_data");
+  
+  if (!userCookie) return null;
+  
+  try {
+    return JSON.parse(userCookie.value);
+  } catch {
+    return null;
+  }
 };
 
-// Clear cookies
 export const clearAuthCookies = async () => {
-  const cookieStore = cookies();
-  (await cookieStore).delete("auth_token");
-  (await cookieStore).delete("user_data");
+  const cookieStore = await cookies();
+  cookieStore.delete("user_data");
 };
