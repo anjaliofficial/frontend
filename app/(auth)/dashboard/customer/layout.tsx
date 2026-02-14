@@ -1,0 +1,186 @@
+"use client";
+
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/app/admin/context/AuthContext";
+import { useState } from "react";
+
+interface NavItem {
+    name: string;
+    href: string;
+    icon: React.ReactNode;
+}
+
+export default function CustomerLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const { user, logout } = useAuth();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    const handleLogout = () => {
+        logout();
+        router.push("/login");
+    };
+
+    const navItems: NavItem[] = [
+        {
+            name: "Dashboard",
+            href: "/dashboard/customer",
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            ),
+        },
+        {
+            name: "My Bookings",
+            href: "/dashboard/customer/bookings",
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            ),
+        },
+        {
+            name: "Profile",
+            href: "/dashboard/customer/profile",
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+            ),
+        },
+    ];
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+            {/* Mobile Sidebar Backdrop */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <aside
+                className={`fixed top-0 left-0 z-50 h-full w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    } lg:translate-x-0`}
+            >
+                <div className="flex flex-col h-full">
+                    {/* Logo/Header */}
+                    <div className="p-6 bg-gradient-to-r from-blue-600 to-purple-600">
+                        <Link href="/" className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                                <span className="text-2xl font-bold text-blue-600">S</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Sajilo Baas</h2>
+                                <p className="text-sm text-blue-100">Customer Portal</p>
+                            </div>
+                        </Link>
+                    </div>
+
+                    {/* User Profile Section */}
+                    {user && (
+                        <div className="px-4 py-4 border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white font-semibold text-lg">
+                                        {user.fullName?.charAt(0)?.toUpperCase() || "U"}
+                                    </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-gray-900 truncate">
+                                        {user.fullName}
+                                    </p>
+                                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Navigation */}
+                    <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                        {navItems.map((item) => {
+                            const isActive = pathname === item.href;
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                        }`}
+                                    onClick={() => setSidebarOpen(false)}
+                                >
+                                    {item.icon}
+                                    {item.name}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+
+                    {/* Browse Listings Button */}
+                    <div className="px-4 py-4 border-t border-gray-200">
+                        <Link
+                            href="/listings"
+                            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-semibold hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md hover:shadow-lg"
+                            onClick={() => setSidebarOpen(false)}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            Browse Listings
+                        </Link>
+                    </div>
+
+                    {/* Logout Button */}
+                    <div className="px-4 py-4 border-t border-gray-200">
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-all"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <div className="lg:ml-64">
+                {/* Mobile Header */}
+                <header className="lg:hidden bg-white shadow-sm sticky top-0 z-30">
+                    <div className="flex items-center justify-between px-4 py-3">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <h1 className="text-lg font-bold text-gray-900">Customer Dashboard</h1>
+                        <Link href="/" className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                        </Link>
+                    </div>
+                </header>
+
+                {/* Page Content */}
+                <main className="p-6 lg:p-8">
+                    {children}
+                </main>
+            </div>
+        </div>
+    );
+}

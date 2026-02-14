@@ -8,14 +8,15 @@ const API_BASE = RAW_API_BASE.endsWith("/api")
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const token = req.cookies.get("token")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const res = await fetch(`${API_BASE}/api/bookings/${params.id}`, {
+  const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -28,8 +29,9 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const token = req.cookies.get("token")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -39,7 +41,7 @@ export async function POST(
 
   // Handle cancel booking
   if (url.pathname.includes("/cancel")) {
-    const res = await fetch(`${API_BASE}/api/bookings/${params.id}/cancel`, {
+    const res = await fetch(`${API_BASE}/api/bookings/${id}/cancel`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -52,7 +54,7 @@ export async function POST(
 
   // Generic POST handler
   const body = await req.json();
-  const res = await fetch(`${API_BASE}/api/bookings/${params.id}`, {
+  const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

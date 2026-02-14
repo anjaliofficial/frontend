@@ -78,15 +78,16 @@ export default function CustomerProfilePage() {
             });
 
             const data = await response.json();
-            if (data.success) {
+            if (data.success && data.user) {
                 setSuccess("Profile updated successfully!");
-                // Update stored user data
-                if (user) {
-                    setUserData({
-                        ...user,
-                        ...formData,
-                    });
-                }
+                // Update stored user data with the complete user object from API
+                setUserData(data.user);
+                // Update form data to reflect the saved values
+                setFormData({
+                    fullName: data.user.fullName || "",
+                    phoneNumber: data.user.phoneNumber || "",
+                    address: data.user.address || "",
+                });
                 setTimeout(() => {
                     setSuccess("");
                 }, 3000);

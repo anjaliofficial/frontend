@@ -38,7 +38,7 @@ export default function HostProfile() {
 
     useEffect(() => {
         if (authLoading) return;
-        
+
         if (!user) {
             router.push("/login");
             return;
@@ -89,12 +89,22 @@ export default function HostProfile() {
                 }),
             });
 
-            if (response.ok) {
-                const updatedData = await response.json();
-                localStorage.setItem("user_data", JSON.stringify(updatedData));
+            const data = await response.json();
+            if (response.ok && data.success && data.user) {
+                // Update localStorage with the complete user object from API
+                localStorage.setItem("user_data", JSON.stringify(data.user));
+                // Update profile state with new data
                 setProfile({
                     ...profile!,
-                    ...editForm,
+                    fullName: data.user.fullName,
+                    phoneNumber: data.user.phoneNumber,
+                    address: data.user.address,
+                });
+                // Update form with saved values
+                setEditForm({
+                    fullName: data.user.fullName || "",
+                    phoneNumber: data.user.phoneNumber || "",
+                    address: data.user.address || "",
                 });
                 setSuccess("Profile updated successfully!");
             } else {
@@ -244,21 +254,19 @@ export default function HostProfile() {
                     <div className="flex gap-4 border-b border-gray-200 mb-6">
                         <button
                             onClick={() => setActiveTab("profile")}
-                            className={`pb-4 px-2 font-semibold transition ${
-                                activeTab === "profile"
+                            className={`pb-4 px-2 font-semibold transition ${activeTab === "profile"
                                     ? "text-blue-600 border-b-2 border-blue-600"
                                     : "text-gray-600 hover:text-gray-900"
-                            }`}
+                                }`}
                         >
                             Edit Profile
                         </button>
                         <button
                             onClick={() => setActiveTab("password")}
-                            className={`pb-4 px-2 font-semibold transition ${
-                                activeTab === "password"
+                            className={`pb-4 px-2 font-semibold transition ${activeTab === "password"
                                     ? "text-blue-600 border-b-2 border-blue-600"
                                     : "text-gray-600 hover:text-gray-900"
-                            }`}
+                                }`}
                         >
                             Change Password
                         </button>
