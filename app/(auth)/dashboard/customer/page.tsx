@@ -39,7 +39,7 @@ export default function CustomerDashboard() {
                     <p><strong>Email:</strong> {user.email}</p>
                     <p><strong>Role:</strong> {user.role}</p>
                 </div>
-                <div className="mt-6 flex gap-4">
+                <div className="mt-6 flex gap-4 flex-wrap">
                     <Link
                         href="/listings"
                         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
@@ -49,6 +49,12 @@ export default function CustomerDashboard() {
                     <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
                         My Bookings
                     </button>
+                    <Link
+                        href="/dashboard/customer/profile"
+                        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition"
+                    >
+                        My Profile
+                    </Link>
                 </div>
             </div>
         </div>

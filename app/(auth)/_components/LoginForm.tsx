@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { loginUser } from "@/lib/actions/auth-action";
 import { getDashboardPath } from "@/lib/auth/roles";
 import { setToken, setUserData } from "@/lib/auth/storage";
@@ -73,6 +74,15 @@ export default function LoginForm() {
             >
                 {loading ? "Loading..." : "Login"}
             </button>
+
+            <div className="flex justify-between items-center text-sm">
+                <Link href="/forget-password" className="text-blue-600 hover:underline">
+                    Forgot Password?
+                </Link>
+                <Link href="/register" className="text-blue-600 hover:underline">
+                    Sign Up
+                </Link>
+            </div>
         </form>
     );
 }
