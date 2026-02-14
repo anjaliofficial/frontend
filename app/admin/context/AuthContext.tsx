@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { logoutUser } from "@/lib/actions/auth-action";
+import { clearToken, clearUserData, getUserData } from "@/lib/auth/storage";
 
 interface User {
     id: string;
@@ -29,21 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Only run on client side
         if (typeof window === "undefined") return;
 
-        // Check localStorage for user data
-        const userData = localStorage.getItem("user_data");
-
-        if (userData) {
-            try {
-                const parsedUser = JSON.parse(userData);
-                setUser(parsedUser);
-            } catch (e) {
-                console.error("Failed to parse user data:", e);
-                localStorage.removeItem("user_data");
-                setUser(null);
-            }
-        } else {
-            setUser(null);
-        }
+        const storedUser = getUserData<User>();
+        setUser(storedUser || null);
 
         setLoading(false);
     }, []);
@@ -55,9 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error("Logout error:", e);
         }
 
-        if (typeof window !== "undefined") {
-            localStorage.removeItem("user_data");
-        }
+        clearUserData();
+        clearToken();
         setUser(null);
         router.push("/login");
     };

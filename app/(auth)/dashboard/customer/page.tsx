@@ -1,55 +1,51 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/admin/context/AuthContext";
+import { getDashboardPath } from "@/lib/auth/roles";
 
 export default function CustomerDashboard() {
-    const [user, setUser] = useState<any>(null);
-    const [mounted, setMounted] = useState(false);
+    const { user, loading } = useAuth();
+    const [ready, setReady] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
-        setMounted(true);
-    }, []);
+        if (loading) return;
 
-    useEffect(() => {
-        if (!mounted) return;
-
-        const data = localStorage.getItem("user_data");
-
-        if (!data) {
-            router.push("/login");
+        if (!user) {
+            router.replace("/login");
             return;
         }
 
-        try {
-            const parsedUser = JSON.parse(data);
-            setUser(parsedUser);
-        } catch (e) {
-            localStorage.removeItem("user_data");
-            router.push("/login");
+        if (user.role !== "customer") {
+            router.replace(getDashboardPath(user.role));
+            return;
         }
-    }, [mounted, router]);
 
-    if (!mounted || !user) {
+        setReady(true);
+    }, [loading, user, router]);
+
+    if (!ready || !user) {
         return <div className="p-8">Loading...</div>;
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <h1 className="text-4xl font-bold mb-4">Customer Dashboard</h1>
-            <div className="bg-white p-6 rounded">
-                <p>Name: {user.fullName}</p>
-                <p>Email: {user.email}</p>
-                <p>Role: {user.role}</p>
-                <button
-                    onClick={() => {
-                        localStorage.clear();
-                        router.push("/login");
-                    }}
-                    className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
-                >
-                    Logout
-                </button>
+        <div>
+            <h1 className="text-4xl font-bold mb-6">Customer Dashboard</h1>
+            <div className="bg-white p-6 rounded shadow">
+                <div className="space-y-2">
+                    <p><strong>Name:</strong> {user.fullName}</p>
+                    <p><strong>Email:</strong> {user.email}</p>
+                    <p><strong>Role:</strong> {user.role}</p>
+                </div>
+                <div className="mt-6 flex gap-4">
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                        Browse Listings
+                    </button>
+                    <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                        My Bookings
+                    </button>
+                </div>
             </div>
         </div>
     );

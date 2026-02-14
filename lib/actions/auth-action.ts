@@ -22,7 +22,11 @@ export async function registerUser(form: {
     const data = await res.json();
 
     if (!res.ok) {
-      return { success: false, message: data.message || "Registration failed", user: null };
+      return {
+        success: false,
+        message: data.message || "Registration failed",
+        user: null,
+      };
     }
 
     // Set cookie on server
@@ -46,13 +50,16 @@ export async function registerUser(form: {
     }
 
     // Return user data to client so it can store in localStorage
-    return { success: true, user: data.user };
+    return { success: true, user: data.user, token: data.token };
   } catch (error) {
     return { success: false, message: "Connection failed", user: null };
   }
 }
 
-export async function loginUser(credentials: { email: string; password: string }) {
+export async function loginUser(credentials: {
+  email: string;
+  password: string;
+}) {
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
@@ -61,9 +68,14 @@ export async function loginUser(credentials: { email: string; password: string }
     });
 
     const data = await res.json();
-    
+
     if (!res.ok || !data.user) {
-      return { success: false, message: data.message || "Login failed", user: null };
+      return {
+        success: false,
+        message: data.message || "Login failed",
+        user: null,
+        token: null,
+      };
     }
 
     // Set cookie on server
@@ -85,9 +97,14 @@ export async function loginUser(credentials: { email: string; password: string }
     }
 
     // Return user data to client so it can store in localStorage
-    return { success: true, user: data.user };
+    return { success: true, user: data.user, token: data.token };
   } catch (error) {
-    return { success: false, message: "Connection failed", user: null };
+    return {
+      success: false,
+      message: "Connection failed",
+      user: null,
+      token: null,
+    };
   }
 }
 

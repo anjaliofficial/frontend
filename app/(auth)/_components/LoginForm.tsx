@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { loginUser } from "@/lib/actions/auth-action";
+import { getDashboardPath } from "@/lib/auth/roles";
+import { setToken, setUserData } from "@/lib/auth/storage";
 
 export default function LoginForm() {
     const [email, setEmail] = useState("");
@@ -19,27 +21,18 @@ export default function LoginForm() {
             const result = await loginUser({ email, password });
 
             if (result.success && result.user) {
-                // Store immediately
-                localStorage.setItem("user_data", JSON.stringify(result.user));
-                localStorage.setItem("isLoggedIn", "true");
+                setUserData(result.user);
+                if (result.token) setToken(result.token);
 
-                // Determine redirect URL
-                let redirectUrl = "/dashboard/customer";
-                if (result.user.role === "admin") {
-                    redirectUrl = "/dashboard/admin";
-                } else if (result.user.role === "host") {
-                    redirectUrl = "/dashboard/host";
-                }
-
-                // Wait a bit then redirect
-                setTimeout(() => {
-                    router.push(redirectUrl);
-                }, 500);
-            } else {
-                setError(result.message || "Login failed");
+                const redirectUrl = getDashboardPath(result.user.role);
                 setLoading(false);
+                router.replace(redirectUrl);
+                return;
             }
-        } catch (err: any) {
+
+            setError(result.message || "Login failed");
+            setLoading(false);
+        } catch {
             setError("Connection error");
             setLoading(false);
         }

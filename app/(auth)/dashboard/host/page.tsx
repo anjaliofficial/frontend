@@ -1,36 +1,51 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/admin/context/AuthContext";
+import { getDashboardPath } from "@/lib/auth/roles";
 
 export default function HostDashboard() {
-    const [user, setUser] = useState<any>(null);
+    const { user, loading } = useAuth();
+    const [ready, setReady] = useState(false);
+    const router = useRouter();
 
     useEffect(() => {
-        const data = localStorage.getItem("user_data");
-        if (data) {
-            setUser(JSON.parse(data));
-        } else {
-            window.location.href = "/login";
-        }
-    }, []);
+        if (loading) return;
 
-    if (!user) return <div className="p-8">Loading...</div>;
+        if (!user) {
+            router.replace("/login");
+            return;
+        }
+
+        if (user.role !== "host") {
+            router.replace(getDashboardPath(user.role));
+            return;
+        }
+
+        setReady(true);
+    }, [loading, user, router]);
+
+    if (!ready || !user) {
+        return <div className="p-8">Loading...</div>;
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <h1 className="text-4xl font-bold mb-4">Host Dashboard</h1>
-            <div className="bg-white p-6 rounded">
-                <p>Name: {user.fullName}</p>
-                <p>Email: {user.email}</p>
-                <p>Role: {user.role}</p>
-                <button
-                    onClick={() => {
-                        localStorage.clear();
-                        window.location.href = "/login";
-                    }}
-                    className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
-                >
-                    Logout
-                </button>
+        <div>
+            <h1 className="text-4xl font-bold mb-6">Host Dashboard</h1>
+            <div className="bg-white p-6 rounded shadow">
+                <div className="space-y-2">
+                    <p><strong>Name:</strong> {user.fullName}</p>
+                    <p><strong>Email:</strong> {user.email}</p>
+                    <p><strong>Role:</strong> {user.role}</p>
+                </div>
+                <div className="mt-6 flex gap-4">
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                        My Listings
+                    </button>
+                    <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                        Bookings
+                    </button>
+                </div>
             </div>
         </div>
     );
