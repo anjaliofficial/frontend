@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:5050/api";
+const RAW_API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5050";
+const API_BASE = RAW_API_BASE.endsWith("/api")
+  ? RAW_API_BASE.slice(0, -4)
+  : RAW_API_BASE;
 
 export async function POST(
   req: NextRequest,

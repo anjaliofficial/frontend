@@ -35,12 +35,20 @@ export default function HostBookingsPage() {
 
     const fetchBookings = async () => {
         try {
+            console.log("Fetching bookings from /api/bookings/host");
             const response = await fetch("/api/bookings/host", {
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
             });
-            if (!response.ok) throw new Error("Failed to fetch bookings");
+
+            console.log("Response status:", response.status);
             const data = await response.json();
+            console.log("Response data:", data);
+
+            if (!response.ok) {
+                throw new Error(`API returned ${response.status}: ${data?.message || "Failed to fetch bookings"}`);
+            }
+
             setBookings(data.bookings || []);
 
             if (data.bookings) {

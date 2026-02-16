@@ -8,6 +8,7 @@ import { getDashboardPath } from "@/lib/auth/roles";
 export default function CustomerDashboard() {
     const { user, loading } = useAuth();
     const [ready, setReady] = useState(false);
+    const [bookings, setBookings] = useState<any[]>([]);
     const router = useRouter();
 
     useEffect(() => {
@@ -25,6 +26,32 @@ export default function CustomerDashboard() {
 
         setReady(true);
     }, [loading, user, router]);
+
+    useEffect(() => {
+        if (ready) {
+            fetchBookings();
+        }
+    }, [ready]);
+
+    const fetchBookings = async () => {
+        try {
+            const response = await fetch("/api/bookings/customer/my", {
+                credentials: "include",
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setBookings(data.bookings || []);
+            }
+        } catch (error) {
+            console.error("Error fetching bookings:", error);
+        }
+    };
+
+    // Calculate stats
+    const totalBookings = bookings.length;
+    const activeTrips = bookings.filter(
+        (b) => b.status === "confirmed" || b.status === "pending"
+    ).length;
 
     if (!ready || !user) {
         return (
@@ -54,7 +81,7 @@ export default function CustomerDashboard() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-blue-100 text-sm font-medium mb-1">Total Bookings</p>
-                                <p className="text-4xl font-bold">0</p>
+                                <p className="text-4xl font-bold">{totalBookings}</p>
                             </div>
                             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +95,7 @@ export default function CustomerDashboard() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-green-100 text-sm font-medium mb-1">Active Trips</p>
-                                <p className="text-4xl font-bold">0</p>
+                                <p className="text-4xl font-bold">{activeTrips}</p>
                             </div>
                             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +145,7 @@ export default function CustomerDashboard() {
                     </Link>
 
                     <Link
-                        href="/my-bookings"
+                        href="/dashboard/customer/bookings"
                         className="group bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all transform hover:-translate-y-1"
                     >
                         <div className="flex items-start gap-4">

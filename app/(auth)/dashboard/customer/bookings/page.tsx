@@ -4,6 +4,20 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
 
+const RAW_API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5050";
+const API_BASE = RAW_API_BASE.endsWith("/api")
+    ? RAW_API_BASE.slice(0, -4)
+    : RAW_API_BASE;
+
+const toImageUrl = (path?: string) => {
+    if (!path) return "";
+    const normalized = path.replace(/\\/g, "/");
+    if (normalized.startsWith("http")) return normalized;
+    const cleaned = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `${API_BASE}${cleaned}`;
+};
+
 export default function CustomerBookingsPage() {
     const { user, loading } = useAuth();
     const [ready, setReady] = useState(false);
@@ -49,6 +63,7 @@ export default function CustomerBookingsPage() {
 
     const cancelBooking = async (bookingId: string) => {
         try {
+            console.log("Cancelling booking:", bookingId);
             const response = await fetch(`/api/bookings/customer/${bookingId}/cancel`, {
                 method: "PUT",
                 headers: {
@@ -57,10 +72,37 @@ export default function CustomerBookingsPage() {
                 credentials: "include",
             });
 
-            if (!response.ok) throw new Error("Failed to cancel booking");
+            console.log("Cancel response status:", response.status);
+            console.log("Cancel response headers:", response.headers.get("content-type"));
+
+            const contentType = response.headers.get("content-type");
+
+            if (!response.ok) {
+                let errorMessage = "Failed to cancel booking";
+
+                try {
+                    if (contentType && contentType.includes("application/json")) {
+                        const errorData = await response.json();
+                        console.error("Cancel error data:", errorData);
+                        errorMessage = errorData.message || errorMessage;
+                    } else {
+                        const textError = await response.text();
+                        console.error("Cancel error text:", textError);
+                        errorMessage = textError || errorMessage;
+                    }
+                } catch (parseError) {
+                    console.error("Error parsing response:", parseError);
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            console.log("Booking cancelled successfully:", data);
             fetchBookings();
         } catch (error) {
             console.error("Error cancelling booking:", error);
+            alert("Failed to cancel booking: " + (error instanceof Error ? error.message : "Unknown error"));
         }
     };
 
@@ -111,56 +153,79 @@ export default function CustomerBookingsPage() {
                     </div>
                 ) : (
                     <div className="grid gap-6">
-                        {bookings.map((booking: any) => (
-                            <div key={booking._id} className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
-                                <div className="flex flex-col md:flex-row">
-                                    <div className="w-full md:w-64 h-48 md:h-auto bg-gradient-to-br from-blue-400 to-purple-500"></div>
-                                    <div className="flex-1 p-6">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div>
-                                                <h3 className="text-xl font-bold text-gray-900 mb-1">{booking.listingId?.title || "Property"}</h3>
-                                                <p className="text-gray-600 flex items-center gap-1">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                    </svg>
-                                                    {booking.listingId?.location || "Location"}
-                                                </p>
-                                            </div>
-                                            <span className={`px-3 py-1 text-sm font-semibold rounded-full ${booking.status === "confirmed" ? "bg-green-100 text-green-700" :
-                                                booking.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                                                    booking.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
-                                                }`}>
-                                                {booking.status?.charAt(0).toUpperCase() + booking.status?.slice(1)}
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                            <div>
-                                                <p className="text-sm text-gray-500 mb-1">Check-in</p>
-                                                <p className="font-semibold text-gray-900">{new Date(booking.checkInDate).toLocaleDateString()}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500 mb-1">Check-out</p>
-                                                <p className="font-semibold text-gray-900">{new Date(booking.checkOutDate).toLocaleDateString()}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                                            <div>
-                                                <p className="text-sm text-gray-500">Total Price</p>
-                                                <p className="text-2xl font-bold text-gray-900">NPR {booking.totalPrice}</p>
-                                            </div>
-                                            {booking.status !== "cancelled" && (
-                                                <button
-                                                    onClick={() => cancelBooking(booking._id)}
-                                                    className="px-4 py-2 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 font-semibold transition-all"
-                                                >
-                                                    Cancel Booking
-                                                </button>
+                        {bookings.map((booking: any) => {
+                            const listingImages = booking.listingId?.images || [];
+                            const listingTitle = booking.listingId?.title || "Property";
+
+                            return (
+                                <div key={booking._id} className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
+                                    <div className="flex flex-col md:flex-row">
+                                        <div className="w-full md:w-64 h-48 md:h-auto flex-shrink-0">
+                                            {listingImages[0] ? (
+                                                <img
+                                                    src={toImageUrl(listingImages[0])}
+                                                    alt={listingTitle}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
                                             )}
+                                        </div>
+                                        <div className="flex-1 p-6">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-gray-900 mb-1">{booking.listingId?.title || "Property"}</h3>
+                                                    <p className="text-gray-600 flex items-center gap-1">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                        </svg>
+                                                        {booking.listingId?.location || "Location"}
+                                                    </p>
+                                                </div>
+                                                <span className={`px-3 py-1 text-sm font-semibold rounded-full ${booking.status === "confirmed" ? "bg-green-100 text-green-700" :
+                                                    booking.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                                                        booking.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
+                                                    }`}>
+                                                    {booking.status?.charAt(0).toUpperCase() + booking.status?.slice(1)}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Check-in</p>
+                                                    <p className="font-semibold text-gray-900">{new Date(booking.checkInDate).toLocaleDateString()}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Check-out</p>
+                                                    <p className="font-semibold text-gray-900">{new Date(booking.checkOutDate).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                                                <div>
+                                                    <p className="text-sm text-gray-500">Total Price</p>
+                                                    <p className="text-2xl font-bold text-gray-900">NPR {booking.totalPrice}</p>
+                                                </div>
+                                                {booking.status === "pending" ? (
+                                                    <button
+                                                        onClick={() => cancelBooking(booking._id)}
+                                                        className="px-4 py-2 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 font-semibold transition-all"
+                                                    >
+                                                        Cancel Booking
+                                                    </button>
+                                                ) : booking.status === "confirmed" ? (
+                                                    <div className="text-sm text-gray-500 italic">
+                                                        Confirmed bookings cannot be cancelled
+                                                    </div>
+                                                ) : booking.status === "cancelled" ? (
+                                                    <div className="text-sm text-red-500 italic">
+                                                        This booking was cancelled
+                                                    </div>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
