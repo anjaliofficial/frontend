@@ -9,7 +9,22 @@ interface User {
     phoneNumber: string;
     address: string;
     role: string;
+    profilePicture?: string;
 }
+
+const RAW_API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5050";
+const API_BASE = RAW_API_BASE.endsWith("/api")
+    ? RAW_API_BASE.slice(0, -4)
+    : RAW_API_BASE;
+
+const toImageUrl = (path?: string) => {
+    if (!path) return "";
+    const normalized = path.replace(/\\/g, "/");
+    if (normalized.startsWith("http")) return normalized;
+    const cleaned = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `${API_BASE}${cleaned}`;
+};
 
 export default function Header() {
     const [user, setUser] = useState<User | null>(null);
@@ -75,8 +90,16 @@ export default function Header() {
                             onClick={() => setShowDropdown(!showDropdown)}
                             className="flex items-center gap-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors"
                         >
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                                {user?.fullName?.charAt(0)?.toUpperCase() || "U"}
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden">
+                                {user?.profilePicture ? (
+                                    <img
+                                        src={toImageUrl(user.profilePicture)}
+                                        alt={user.fullName}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span>{user?.fullName?.charAt(0)?.toUpperCase() || "U"}</span>
+                                )}
                             </div>
                             <div className="text-left hidden md:block">
                                 <p className="text-sm font-semibold text-gray-900">{user?.fullName}</p>

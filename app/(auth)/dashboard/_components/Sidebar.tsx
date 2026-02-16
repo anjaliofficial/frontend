@@ -8,7 +8,22 @@ interface User {
     email: string;
     fullName: string;
     role: string;
+    profilePicture?: string;
 }
+
+const RAW_API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5050";
+const API_BASE = RAW_API_BASE.endsWith("/api")
+    ? RAW_API_BASE.slice(0, -4)
+    : RAW_API_BASE;
+
+const toImageUrl = (path?: string) => {
+    if (!path) return "";
+    const normalized = path.replace(/\\/g, "/");
+    if (normalized.startsWith("http")) return normalized;
+    const cleaned = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `${API_BASE}${cleaned}`;
+};
 
 export default function Sidebar() {
     const [user, setUser] = useState<User | null>(null);
@@ -181,9 +196,8 @@ export default function Sidebar() {
 
             {/* Sidebar */}
             <aside
-                className={`fixed lg:sticky top-0 left-0 h-screen bg-white border-r border-gray-200 shadow-lg transition-all duration-300 z-40 ${
-                    isCollapsed ? "-translate-x-full lg:translate-x-0 lg:w-20" : "translate-x-0 w-64"
-                }`}
+                className={`fixed lg:sticky top-0 left-0 h-screen bg-white border-r border-gray-200 shadow-lg transition-all duration-300 z-40 ${isCollapsed ? "-translate-x-full lg:translate-x-0 lg:w-20" : "translate-x-0 w-64"
+                    }`}
             >
                 <div className="flex flex-col h-full">
                     {/* Logo Section */}
@@ -210,11 +224,10 @@ export default function Sidebar() {
                                 <Link
                                     key={item.path}
                                     href={item.path}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
-                                        isActive(item.path)
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${isActive(item.path)
                                             ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
                                             : "text-gray-700 hover:bg-gray-100"
-                                    }`}
+                                        }`}
                                 >
                                     <div className={`flex-shrink-0 ${isActive(item.path) ? "text-white" : "text-gray-500 group-hover:text-blue-600"}`}>
                                         {item.icon}
@@ -230,8 +243,16 @@ export default function Sidebar() {
                     {/* User Profile Section */}
                     <div className="p-4 border-t border-gray-200">
                         <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-                            <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold">
-                                {user?.fullName?.charAt(0)?.toUpperCase() || "U"}
+                            <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold overflow-hidden">
+                                {user?.profilePicture ? (
+                                    <img
+                                        src={toImageUrl(user.profilePicture)}
+                                        alt={user.fullName}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span>{user?.fullName?.charAt(0)?.toUpperCase() || "U"}</span>
+                                )}
                             </div>
                             {!isCollapsed && (
                                 <div className="flex-1 min-w-0">

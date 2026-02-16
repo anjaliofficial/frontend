@@ -16,6 +16,8 @@ interface User {
     phoneNumber: string;
     address: string;
     role: "customer" | "host" | "admin";
+    profilePicture?: string;
+    createdAt?: string;
 }
 
 interface AuthContextType {
