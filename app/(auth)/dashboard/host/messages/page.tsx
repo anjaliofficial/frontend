@@ -57,7 +57,7 @@ export default function HostMessagesPage() {
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false);
   const threadPageSize = 6;
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState("");
+  const [editOriginal, setEditOriginal] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   // Context Menu State
@@ -333,13 +333,28 @@ export default function HostMessagesPage() {
     }
   };
 
-  const handleSend = async (event: FormEvent) => {
-    event.preventDefault();
+  const submitMessage = async () => {
+    if (editingMessageId) {
+      const content = draft.trim();
+      if (!content || content === editOriginal.trim()) {
+        setEditingMessageId(null);
+        setEditOriginal("");
+        setDraft("");
+        return;
+      }
+      await handleEditMessage(editingMessageId, content);
+      return;
+    }
     await sendMessage();
   };
 
-  const handleEditMessage = async (messageId: string) => {
-    if (!editContent.trim()) {
+  const handleSend = async (event: FormEvent) => {
+    event.preventDefault();
+    await submitMessage();
+  };
+
+  const handleEditMessage = async (messageId: string, content: string) => {
+    if (!content.trim()) {
       alert("Message content cannot be empty");
       return;
     }
@@ -348,7 +363,7 @@ export default function HostMessagesPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ content: editContent.trim() }),
+        body: JSON.stringify({ content: content.trim() }),
       });
 
       const data = await res.json();
@@ -359,12 +374,13 @@ export default function HostMessagesPage() {
       setMessages((prev) =>
         prev.map((msg) =>
           msg._id === messageId
-            ? { ...msg, content: editContent.trim(), isEdited: true }
+            ? { ...msg, content: content.trim(), isEdited: true }
             : msg
         )
       );
       setEditingMessageId(null);
-      setEditContent("");
+      setEditOriginal("");
+      setDraft("");
     } catch (error) {
       console.error("Error editing message:", error);
       alert(error instanceof Error ? error.message : "Failed to edit message");
@@ -619,7 +635,6 @@ export default function HostMessagesPage() {
                 let lastDate = "";
                 return messages.map((message) => {
                   const isOwn = message.sender === user.id;
-                  const isEditingThis = editingMessageId === message._id;
                   const dateLabel = new Date(message.createdAt).toLocaleDateString();
                   const showDate = dateLabel !== lastDate;
                   lastDate = dateLabel;
@@ -643,44 +658,15 @@ export default function HostMessagesPage() {
                               : "bg-gray-100 text-gray-800"
                             } ${message.isDeleted ? "opacity-60 italic pointer-events-none" : ""}`}
                         >
-                          {isEditingThis ? (
-                            <div className="space-y-2">
-                              <textarea
-                                value={editContent}
-                                onChange={(e) => setEditContent(e.target.value)}
-                                className="w-full px-2 py-1 rounded text-gray-900 border focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                rows={2}
-                                autoFocus
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleEditMessage(message._id)}
-                                  className="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingMessageId(null);
-                                    setEditContent("");
-                                  }}
-                                  className="px-3 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
+                          <>
+                            <p>{message.content}</p>
+                            <div className="flex items-center justify-between mt-1 gap-2">
+                              <p className={`text-xs ${isOwn ? "text-emerald-100" : "text-gray-500"}`}>
+                                {new Date(message.createdAt).toLocaleString()}
+                                {message.isEdited && !message.isDeleted && " (edited)"}
+                              </p>
                             </div>
-                          ) : (
-                            <>
-                              <p>{message.content}</p>
-                              <div className="flex items-center justify-between mt-1 gap-2">
-                                <p className={`text-xs ${isOwn ? "text-emerald-100" : "text-gray-500"}`}>
-                                  {new Date(message.createdAt).toLocaleString()}
-                                  {message.isEdited && !message.isDeleted && " (edited)"}
-                                </p>
-                              </div>
-                            </>
-                          )}
+                          </>
                         </div>
                       </div>
                     </div>
@@ -703,12 +689,14 @@ export default function HostMessagesPage() {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    void sendMessage();
+                    void submitMessage();
                   }
                 }}
                 placeholder={
                   selected.otherUserId && selected.listingId
-                    ? "Type your message..."
+                    ? editingMessageId
+                      ? "Edit your message..."
+                      : "Type your message..."
                     : "Select a guest to start chatting"
                 }
                 disabled={!selected.otherUserId || !selected.listingId}
@@ -738,7 +726,8 @@ export default function HostMessagesPage() {
               const messageToEdit = messages.find((msg) => msg._id === contextMenu.messageId);
               if (messageToEdit) {
                 setEditingMessageId(contextMenu.messageId);
-                setEditContent(messageToEdit.content);
+                setEditOriginal(messageToEdit.content);
+                setDraft(messageToEdit.content);
               }
               setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
             }}

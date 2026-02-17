@@ -72,7 +72,7 @@ export default function CustomerMessagesPage() {
     // Input/Edit state
     const [inputValue, setInputValue] = useState("");
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-    const [editContent, setEditContent] = useState("");
+    const [editOriginal, setEditOriginal] = useState("");
     const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
@@ -95,6 +95,22 @@ export default function CustomerMessagesPage() {
     const socket = getSocket();
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const getUserId = (value: any) => (typeof value === "string" ? value : value?._id);
+
+    const normalizeUser = (value: any) => {
+        if (!value) return value;
+        if (typeof value === "string") {
+            return { _id: value, fullName: "", profilePicture: "", email: "" };
+        }
+        return value;
+    };
+
+    const normalizeMessage = (message: Message): Message => ({
+        ...message,
+        sender: normalizeUser(message.sender),
+        receiver: normalizeUser(message.receiver),
+    });
 
     // Extract URL params and update selected thread
     useEffect(() => {
@@ -243,7 +259,8 @@ export default function CustomerMessagesPage() {
             }
 
             const list = Array.isArray(data?.data) ? data.data : [];
-            setMessages((prev) => (append ? [...list, ...prev] : list));
+            const normalized = list.map((message: Message) => normalizeMessage(message));
+            setMessages((prev) => (append ? [...normalized, ...prev] : normalized));
             setMessagesCursor(data.nextCursor || null);
             setMessagesHasMore(Boolean(data.nextCursor));
 
@@ -292,7 +309,7 @@ export default function CustomerMessagesPage() {
         // Socket event listeners
         newSocket?.on("receiveMessage", (message: Message) => {
             console.log("receiveMessage event received:", message);
-            setMessages((prev) => [...prev, { ...message, sending: false }]);
+            setMessages((prev) => [...prev, normalizeMessage({ ...message, sending: false })]);
         });
 
         newSocket?.on("messageSent", (data: any) => {
@@ -301,7 +318,7 @@ export default function CustomerMessagesPage() {
                 prev.map((msg) =>
                     msg.tempId === data.tempId
                         ? {
-                            ...data.message,
+                            ...normalizeMessage(data.message),
                             tempId: undefined,
                             sending: false,
                         }
@@ -324,12 +341,13 @@ export default function CustomerMessagesPage() {
             setMessages((prev) =>
                 prev.map((msg) =>
                     msg._id === editedMessage._id
-                        ? { ...editedMessage, sending: false }
+                        ? { ...normalizeMessage(editedMessage), sending: false }
                         : msg,
                 ),
             );
             setEditingMessageId(null);
-            setEditContent("");
+            setEditOriginal("");
+            setInputValue("");
         });
 
         newSocket?.on("messageDeleted", (data: any) => {
@@ -392,13 +410,37 @@ export default function CustomerMessagesPage() {
         async (e: React.FormEvent) => {
             e.preventDefault();
 
-            if (!inputValue.trim() || !user || !selected.otherUserId || !socket?.connected) {
+            if (!user || !selected.otherUserId || !socket?.connected) {
                 setError("Unable to send message");
                 return;
             }
 
+            const contentToSend = inputValue.trim();
+            if (!contentToSend) {
+                setError("Unable to send message");
+                return;
+            }
+
+            if (editingMessageId) {
+                if (contentToSend === editOriginal.trim()) {
+                    setEditingMessageId(null);
+                    setEditOriginal("");
+                    setInputValue("");
+                    return;
+                }
+                try {
+                    emitEditMessage(editingMessageId, contentToSend);
+                    setEditingMessageId(null);
+                    setEditOriginal("");
+                    setInputValue("");
+                } catch (err) {
+                    setError("Failed to edit message");
+                    console.error(err);
+                }
+                return;
+            }
+
             const tempId = `temp_${Date.now()}`;
-            const contentToSend = inputValue;
             const tempMessage: Message = {
                 _id: tempId,
                 tempId,
@@ -435,7 +477,7 @@ export default function CustomerMessagesPage() {
                 tempId,
             });
         },
-        [inputValue, user, selected.otherUserId, socket, selected.listingId],
+        [inputValue, user, selected.otherUserId, socket, selected.listingId, editingMessageId, editOriginal, emitEditMessage],
     );
 
     const handleEditMessage = useCallback(
@@ -443,27 +485,12 @@ export default function CustomerMessagesPage() {
             const message = messages.find((msg) => msg._id === messageId);
             if (message) {
                 setEditingMessageId(messageId);
-                setEditContent(message.content);
+                setEditOriginal(message.content);
+                setInputValue(message.content);
             }
         },
         [messages],
     );
-
-    const handleSaveEdit = useCallback(async () => {
-        if (!editContent.trim() || !editingMessageId) {
-            setError("Edit content cannot be empty");
-            return;
-        }
-
-        try {
-            emitEditMessage(editingMessageId, editContent);
-            setEditingMessageId(null);
-            setEditContent("");
-        } catch (err) {
-            setError("Failed to edit message");
-            console.error(err);
-        }
-    }, [editContent, editingMessageId]);
 
     const handleDeleteMessage = useCallback(
         (messageId: string, type: "for_me" | "for_everyone") => {
@@ -598,6 +625,12 @@ export default function CustomerMessagesPage() {
         return () => clearTimeout(loadingTimeout);
     }, [loadingMessages, messages]);
 
+    useEffect(() => {
+        if (messagesLoadingMore) return;
+        if (messages.length === 0) return;
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, messagesLoadingMore, selected.otherUserId, selected.listingId]);
+
     if (!user) {
         return (
             <div className="flex items-center justify-center h-screen bg-gray-100">
@@ -700,7 +733,7 @@ export default function CustomerMessagesPage() {
                         (() => {
                             let lastDate = "";
                             return messages.map((message) => {
-                                const isOwnMessage = message.sender._id === user?.id;
+                                const isOwnMessage = getUserId(message.sender) === user?.id;
                                 const isDeletedForEveryone = message.isDeleted && message.deletedFor?.includes(user?.id || "");
                                 const dateLabel = new Date(message.createdAt).toLocaleDateString();
                                 const showDate = dateLabel !== lastDate;
@@ -716,7 +749,7 @@ export default function CustomerMessagesPage() {
                                         <div
                                             className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} group`}
                                         >
-                                            {!isOwnMessage && message.sender.profilePicture && (
+                                            {!isOwnMessage && message.sender?.profilePicture && (
                                                 <img
                                                     src={message.sender.profilePicture}
                                                     alt={message.sender.fullName}
@@ -754,85 +787,54 @@ export default function CustomerMessagesPage() {
                                                         </p>
                                                     ) : (
                                                         <>
-                                                            {editingMessageId === message._id ? (
-                                                                <div className="flex flex-col gap-2">
-                                                                    <textarea
-                                                                        value={editContent}
-                                                                        onChange={(e) =>
-                                                                            setEditContent(e.target.value)
-                                                                        }
-                                                                        className="w-full p-2 border border-gray-400 rounded text-gray-900"
-                                                                        rows={2}
-                                                                        autoFocus
-                                                                    />
-                                                                    <div className="flex gap-2">
-                                                                        <button
-                                                                            onClick={handleSaveEdit}
-                                                                            className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                                                                        >
-                                                                            Save
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                setEditingMessageId(null);
-                                                                                setEditContent("");
-                                                                            }}
-                                                                            className="px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
-                                                                        >
-                                                                            Cancel
-                                                                        </button>
+                                                            <>
+                                                                <p
+                                                                    className={`text-sm ${isOwnMessage ? "text-white" : "text-gray-900"
+                                                                        }`}
+                                                                >
+                                                                    {message.content}
+                                                                </p>
+                                                                <div
+                                                                    className={`text-xs mt-1 flex items-center justify-between ${isOwnMessage
+                                                                        ? "text-blue-100"
+                                                                        : "text-gray-600"
+                                                                        }`}
+                                                                >
+                                                                    <span>
+                                                                        {new Date(
+                                                                            message.createdAt,
+                                                                        ).toLocaleTimeString([], {
+                                                                            hour: "2-digit",
+                                                                            minute: "2-digit",
+                                                                        })}
+                                                                    </span>
+                                                                    <div className="ml-2 flex items-center gap-1">
+                                                                        {message.isEdited && (
+                                                                            <span className="italic text-xs">
+                                                                                (edited)
+                                                                            </span>
+                                                                        )}
+                                                                        {isOwnMessage && !message.sending && (
+                                                                            <span className="font-semibold">
+                                                                                {message.status ===
+                                                                                    MessageStatus.SENT && "✓"}
+                                                                                {message.status ===
+                                                                                    MessageStatus.DELIVERED &&
+                                                                                    "✓✓"}
+                                                                                {message.status ===
+                                                                                    MessageStatus.READ && (
+                                                                                        <span className="text-blue-200">
+                                                                                            ✓✓
+                                                                                        </span>
+                                                                                    )}
+                                                                            </span>
+                                                                        )}
+                                                                        {message.sending && (
+                                                                            <span className="animate-pulse">⏳</span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
-                                                            ) : (
-                                                                <>
-                                                                    <p
-                                                                        className={`text-sm ${isOwnMessage ? "text-white" : "text-gray-900"
-                                                                            }`}
-                                                                    >
-                                                                        {message.content}
-                                                                    </p>
-                                                                    <div
-                                                                        className={`text-xs mt-1 flex items-center justify-between ${isOwnMessage
-                                                                            ? "text-blue-100"
-                                                                            : "text-gray-600"
-                                                                            }`}
-                                                                    >
-                                                                        <span>
-                                                                            {new Date(
-                                                                                message.createdAt,
-                                                                            ).toLocaleTimeString([], {
-                                                                                hour: "2-digit",
-                                                                                minute: "2-digit",
-                                                                            })}
-                                                                        </span>
-                                                                        <div className="ml-2 flex items-center gap-1">
-                                                                            {message.isEdited && (
-                                                                                <span className="italic text-xs">
-                                                                                    (edited)
-                                                                                </span>
-                                                                            )}
-                                                                            {isOwnMessage && !message.sending && (
-                                                                                <span className="font-semibold">
-                                                                                    {message.status ===
-                                                                                        MessageStatus.SENT && "✓"}
-                                                                                    {message.status ===
-                                                                                        MessageStatus.DELIVERED &&
-                                                                                        "✓✓"}
-                                                                                    {message.status ===
-                                                                                        MessageStatus.READ && (
-                                                                                            <span className="text-blue-200">
-                                                                                                ✓✓
-                                                                                            </span>
-                                                                                        )}
-                                                                                </span>
-                                                                            )}
-                                                                            {message.sending && (
-                                                                                <span className="animate-pulse">⏳</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </>
-                                                            )}
+                                                            </>
                                                         </>
                                                     )}
                                                 </div>
@@ -855,6 +857,12 @@ export default function CustomerMessagesPage() {
                                 <textarea
                                     value={inputValue}
                                     onChange={handleInputChange}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" && !event.shiftKey) {
+                                            event.preventDefault();
+                                            event.currentTarget.form?.requestSubmit();
+                                        }
+                                    }}
                                     placeholder="Type a message..."
                                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                                     rows={1}
