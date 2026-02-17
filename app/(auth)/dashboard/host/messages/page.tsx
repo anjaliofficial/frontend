@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
+import ContextMenu from "./ContextMenu";
+import DeleteConfirmModal from "./DeleteConfirmModal";
 
 interface Message {
   _id: string;
@@ -12,6 +14,9 @@ interface Message {
   content: string;
   createdAt: string;
   read?: boolean;
+  isEdited?: boolean;
+  isDeleted?: boolean;
+  deletedBy?: string;
 }
 
 interface ThreadItem {
@@ -50,6 +55,24 @@ export default function HostMessagesPage() {
   const [threadsHasMore, setThreadsHasMore] = useState(false);
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false);
   const threadPageSize = 6;
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    messageId: "",
+    isOwnMessage: false,
+  });
+
+  // Delete Confirmation State
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    isOpen: false,
+    messageId: "",
+    isDeleting: false,
+  });
 
   useEffect(() => {
     if (loading) return;
@@ -310,6 +333,187 @@ export default function HostMessagesPage() {
     await sendMessage();
   };
 
+  const handleEditMessage = async (messageId: string) => {
+    if (!editContent.trim()) {
+      alert("Message content cannot be empty");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/messages/message/${messageId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ content: editContent.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to edit message");
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId
+            ? { ...msg, content: editContent.trim(), isEdited: true }
+            : msg
+        )
+      );
+      setEditingMessageId(null);
+      setEditContent("");
+    } catch (error) {
+      console.error("Error editing message:", error);
+      alert(error instanceof Error ? error.message : "Failed to edit message");
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm("Are you sure you want to delete this message?")) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/messages/message/${messageId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to delete message");
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId
+            ? { ...msg, content: "This message has been deleted", isDeleted: true, deletedBy: user?.id || "" }
+            : msg
+        )
+      );
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete message");
+    }
+  };
+
+  // Context Menu Event Handler
+  const handleContextMenu = (
+    e: React.MouseEvent,
+    messageId: string,
+    isOwn: boolean
+  ) => {
+    e.preventDefault();
+    console.log("Right-click detected on message:", messageId);
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      messageId,
+      isOwnMessage: isOwn,
+    });
+  };
+
+  // Copy Message Handler
+  const handleCopyMessage = () => {
+    const message = messages.find((m) => m._id === contextMenu.messageId);
+    if (message) {
+      navigator.clipboard.writeText(message.content).then(() => {
+        console.log("Message copied to clipboard");
+        setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+      });
+    }
+  };
+
+  // Delete Handlers
+  const handleDeleteForMe = async () => {
+    console.log("Delete for me clicked");
+    setDeleteConfirm((prev) => ({ ...prev, isDeleting: true }));
+    try {
+      console.log("Deleting message for me:", contextMenu.messageId);
+      const res = await fetch(`/api/messages/message/${contextMenu.messageId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to delete message");
+      }
+
+      setMessages((prev) =>
+        prev.filter((msg) => msg._id !== contextMenu.messageId)
+      );
+      setTimeout(() => {
+        setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false });
+        setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+      }, 500);
+    } catch (err) {
+      setDeleteConfirm((prev) => ({ ...prev, isDeleting: false }));
+      console.error("Error deleting message:", err);
+    }
+  };
+
+  const handleDeleteForEveryone = async () => {
+    console.log("Delete for everyone clicked");
+    setDeleteConfirm((prev) => ({ ...prev, isDeleting: true }));
+    try {
+      console.log("Deleting message for everyone:", contextMenu.messageId);
+      const res = await fetch(`/api/messages/message/${contextMenu.messageId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to delete message");
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === contextMenu.messageId
+            ? { ...msg, content: "This message has been deleted", isDeleted: true, deletedBy: user?.id || "" }
+            : msg
+        )
+      );
+      setTimeout(() => {
+        setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false });
+        setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+      }, 500);
+    } catch (err) {
+      setDeleteConfirm((prev) => ({ ...prev, isDeleting: false }));
+      console.error("Error deleting message:", err);
+    }
+  };
+
+  const handleReply = () => {
+    console.log("Reply clicked");
+    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+  };
+
+  const handleForward = () => {
+    console.log("Forward clicked");
+    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+  };
+
+  const handlePin = () => {
+    console.log("Pin clicked");
+    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+  };
+
+  const handleStar = () => {
+    console.log("Star clicked");
+    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+  };
+
+  const handleEdit = () => {
+    console.log("Edit clicked");
+    setEditingMessageId(contextMenu.messageId);
+    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+  };
+
+  const handleSelect = () => {
+    console.log("Select clicked");
+    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+  };
+
   useEffect(() => {
     if (messagesLoadingMore) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -435,6 +639,7 @@ export default function HostMessagesPage() {
                 let lastDate = "";
                 return messages.map((message) => {
                   const isOwn = message.sender === user.id;
+                  const isEditingThis = editingMessageId === message._id;
                   const dateLabel = new Date(message.createdAt).toLocaleDateString();
                   const showDate = dateLabel !== lastDate;
                   lastDate = dateLabel;
@@ -445,16 +650,76 @@ export default function HostMessagesPage() {
                           {dateLabel}
                         </div>
                       )}
-                      <div
-                        className={`w-fit max-w-[65%] rounded-2xl px-4 py-2 text-sm break-words ${isOwn
-                          ? "ml-auto bg-emerald-600 text-white"
-                          : "bg-gray-100 text-gray-800"
-                          }`}
-                      >
-                        <p>{message.content}</p>
-                        <p className={`mt-1 text-xs ${isOwn ? "text-emerald-100" : "text-gray-500"}`}>
-                          {new Date(message.createdAt).toLocaleString()}
-                        </p>
+                      <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                        <div
+                          onContextMenu={(e) =>
+                            handleContextMenu(e, message._id, isOwn)
+                          }
+                          className={`w-fit max-w-[65%] rounded-2xl px-4 py-2 text-sm break-words cursor-context-menu ${isOwn
+                            ? "bg-emerald-600 text-white"
+                            : "bg-gray-100 text-gray-800"
+                            } ${message.isDeleted ? "opacity-60 italic" : ""}`}
+                        >
+                          {isEditingThis ? (
+                            <div className="space-y-2">
+                              <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                className="w-full px-2 py-1 rounded text-gray-900 border focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                rows={2}
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleEditMessage(message._id)}
+                                  className="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingMessageId(null);
+                                    setEditContent("");
+                                  }}
+                                  className="px-3 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p>{message.content}</p>
+                              <div className="flex items-center justify-between mt-1 gap-2">
+                                <p className={`text-xs ${isOwn ? "text-emerald-100" : "text-gray-500"}`}>
+                                  {new Date(message.createdAt).toLocaleString()}
+                                  {message.isEdited && !message.isDeleted && " (edited)"}
+                                </p>
+                                {isOwn && !message.isDeleted && (
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setEditingMessageId(message._id);
+                                        setEditContent(message.content);
+                                      }}
+                                      className="text-xs px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded"
+                                      title="Edit message"
+                                    >
+                                      ✏️
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteMessage(message._id)}
+                                      className="text-xs px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded"
+                                      title="Delete message"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -496,6 +761,41 @@ export default function HostMessagesPage() {
               </button>
             </div>
           </form>
+
+          {/* Context Menu */}
+          <ContextMenu
+            isOpen={contextMenu.isOpen}
+            x={contextMenu.x}
+            y={contextMenu.y}
+            isOwnMessage={contextMenu.isOwnMessage}
+            onClose={() =>
+              setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false })
+            }
+            onReply={handleReply}
+            onCopy={handleCopyMessage}
+            onForward={handleForward}
+            onPin={handlePin}
+            onStar={handleStar}
+            onEdit={() => {
+              handleEdit();
+              setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+            }}
+            onDelete={() => {
+              console.log("Delete option clicked from context menu");
+              setDeleteConfirm({ isOpen: true, messageId: contextMenu.messageId, isDeleting: false });
+              setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+            }}
+            onSelect={handleSelect}
+          />
+
+          {/* Delete Confirmation Modal */}
+          <DeleteConfirmModal
+            isOpen={deleteConfirm.isOpen}
+            isDeleting={deleteConfirm.isDeleting}
+            onClose={() => setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false })}
+            onDeleteForMe={handleDeleteForMe}
+            onDeleteForEveryone={handleDeleteForEveryone}
+          />
         </div>
       </div>
     </div>

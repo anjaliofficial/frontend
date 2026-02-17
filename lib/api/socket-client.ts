@@ -1,0 +1,109 @@
+import io, { Socket } from "socket.io-client";
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5050";
+
+let socket: Socket | null = null;
+
+export const initSocket = (token: string) => {
+  if (socket?.connected) {
+    return socket;
+  }
+
+  socket = io(API_BASE, {
+    auth: { token },
+    transports: ["websocket"],
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionAttempts: 5,
+  });
+
+  socket.on("connect", () => {
+    console.log("Socket connected");
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected");
+  });
+
+  socket.on("connect_error", (error: any) => {
+    console.error("Socket connection error:", error);
+  });
+
+  return socket;
+};
+
+export const getSocket = (): Socket | null => socket;
+
+export const disconnectSocket = () => {
+  if (socket?.connected) {
+    socket.disconnect();
+    socket = null;
+  }
+};
+
+// Event emitters
+export const sendMessage = (data: {
+  receiverId: string;
+  listingId: string;
+  content: string;
+  tempId: string;
+}) => {
+  if (socket?.connected) {
+    socket.emit("sendMessage", data);
+  }
+};
+
+export const markMessageAsDelivered = (messageId: string) => {
+  if (socket?.connected) {
+    socket.emit("messageDelivered", messageId);
+  }
+};
+
+export const markMessageAsRead = (messageId: string) => {
+  if (socket?.connected) {
+    socket.emit("messageRead", messageId);
+  }
+};
+
+export const editMessage = (messageId: string, content: string) => {
+  if (socket?.connected) {
+    socket.emit("editMessage", { messageId, content });
+  }
+};
+
+export const deleteMessage = (
+  messageId: string,
+  deleteType: "for_me" | "for_everyone",
+) => {
+  if (socket?.connected) {
+    socket.emit("deleteMessage", { messageId, deleteType });
+  }
+};
+
+export const markConversationRead = (
+  otherUserId: string,
+  listingId: string,
+) => {
+  if (socket?.connected) {
+    socket.emit("markConversationRead", { otherUserId, listingId });
+  }
+};
+
+export const joinRoom = (listingId: string) => {
+  if (socket?.connected) {
+    socket.emit("joinRoom", listingId);
+  }
+};
+
+export const startTyping = (receiverId: string, listingId: string) => {
+  if (socket?.connected) {
+    socket.emit("typing", { receiverId, listingId });
+  }
+};
+
+export const stopTyping = (receiverId: string, listingId: string) => {
+  if (socket?.connected) {
+    socket.emit("stopTyping", { receiverId, listingId });
+  }
+};
