@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
 
@@ -106,6 +107,16 @@ export default function CustomerBookingsPage() {
         }
     };
 
+    const getChatUrl = (booking: any) => {
+        const hostId = booking.hostId?._id || booking.hostId;
+        const params = new URLSearchParams();
+        if (hostId) params.set("hostId", hostId);
+        if (booking._id) params.set("bookingId", booking._id);
+        if (booking.listingId?._id) params.set("listingId", booking.listingId._id);
+        const query = params.toString();
+        return query ? `/dashboard/customer/messages?${query}` : "/dashboard/customer/messages";
+    };
+
     if (!ready || !user) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -199,27 +210,35 @@ export default function CustomerBookingsPage() {
                                                     <p className="font-semibold text-gray-900">{new Date(booking.checkOutDate).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                                            <div className="flex flex-col gap-3 pt-4 border-t border-gray-200 md:flex-row md:items-center md:justify-between">
                                                 <div>
                                                     <p className="text-sm text-gray-500">Total Price</p>
                                                     <p className="text-2xl font-bold text-gray-900">NPR {booking.totalPrice}</p>
                                                 </div>
-                                                {booking.status === "pending" ? (
-                                                    <button
-                                                        onClick={() => cancelBooking(booking._id)}
-                                                        className="px-4 py-2 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 font-semibold transition-all"
+                                                <div className="flex items-center gap-2">
+                                                    <Link
+                                                        href={getChatUrl(booking)}
+                                                        className="px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 font-semibold transition-all"
                                                     >
-                                                        Cancel Booking
-                                                    </button>
-                                                ) : booking.status === "confirmed" ? (
-                                                    <div className="text-sm text-gray-500 italic">
-                                                        Confirmed bookings cannot be cancelled
-                                                    </div>
-                                                ) : booking.status === "cancelled" ? (
-                                                    <div className="text-sm text-red-500 italic">
-                                                        This booking was cancelled
-                                                    </div>
-                                                ) : null}
+                                                        Chat
+                                                    </Link>
+                                                    {booking.status === "pending" ? (
+                                                        <button
+                                                            onClick={() => cancelBooking(booking._id)}
+                                                            className="px-4 py-2 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 font-semibold transition-all"
+                                                        >
+                                                            Cancel Booking
+                                                        </button>
+                                                    ) : booking.status === "confirmed" ? (
+                                                        <div className="text-sm text-gray-500 italic">
+                                                            Confirmed bookings cannot be cancelled
+                                                        </div>
+                                                    ) : booking.status === "cancelled" ? (
+                                                        <div className="text-sm text-red-500 italic">
+                                                            This booking was cancelled
+                                                        </div>
+                                                    ) : null}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
