@@ -38,6 +38,10 @@ export default function HostMessagesPage() {
   });
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [messagesCursor, setMessagesCursor] = useState<string | null>(null);
+  const [messagesHasMore, setMessagesHasMore] = useState(false);
+  const [messagesLoadingMore, setMessagesLoadingMore] = useState(false);
+  const messagePageSize = 20;
   const [draft, setDraft] = useState("");
   const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
@@ -190,38 +194,58 @@ export default function HostMessagesPage() {
     });
   }, [threads, selected.otherUserId, selected.listingId, searchParams]);
 
-  useEffect(() => {
-    if (!selected.otherUserId || !selected.listingId) return;
-    void markThreadRead({
-      otherUserId: selected.otherUserId,
-      listingId: selected.listingId,
-    });
-    setThreads((prev) =>
-      prev.map((thread) =>
-        thread.otherUserId === selected.otherUserId &&
-          thread.listingId === selected.listingId
-          ? { ...thread, unread: false }
-          : thread,
-      ),
-    );
-  }, [selected.otherUserId, selected.listingId]);
+  const fetchMessages = async (
+    otherUserId: string,
+    listingId: string,
+    options?: { cursor?: string | null; append?: boolean },
+  ) => {
+    const append = Boolean(options?.append);
+    if (append) {
+      setMessagesLoadingMore(true);
+    } else {
+      setLoadingMessages(true);
+    }
 
-  const fetchMessages = async (otherUserId: string, listingId: string) => {
-    setLoadingMessages(true);
     try {
-      const res = await fetch(`/api/messages/${otherUserId}/${listingId}`, {
-        credentials: "include",
-      });
+      const params = new URLSearchParams();
+      params.set("limit", String(messagePageSize));
+      if (options?.cursor) {
+        params.set("cursor", options.cursor);
+      }
+      const res = await fetch(
+        `/api/messages/${otherUserId}/${listingId}?${params.toString()}`,
+        { credentials: "include" },
+      );
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.message || "Failed to load messages");
       }
-      setMessages(Array.isArray(data?.data) ? data.data : []);
+
+      const list = Array.isArray(data?.data) ? data.data : [];
+      setMessages((prev) => (append ? [...list, ...prev] : list));
+      setMessagesCursor(data.nextCursor || null);
+      setMessagesHasMore(Boolean(data.nextCursor));
+
+      if (!append) {
+        await markThreadRead({ otherUserId, listingId });
+        setThreads((prev) =>
+          prev.map((thread) =>
+            thread.otherUserId === otherUserId &&
+              thread.listingId === listingId
+              ? { ...thread, unread: false }
+              : thread,
+          ),
+        );
+      }
     } catch (error) {
       console.error("Error fetching messages:", error);
-      setMessages([]);
+      if (!append) setMessages([]);
     } finally {
-      setLoadingMessages(false);
+      if (append) {
+        setMessagesLoadingMore(false);
+      } else {
+        setLoadingMessages(false);
+      }
     }
   };
 
@@ -355,6 +379,21 @@ export default function HostMessagesPage() {
           </div>
 
           <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+            {messagesHasMore && (
+              <button
+                type="button"
+                onClick={() =>
+                  fetchMessages(selected.otherUserId, selected.listingId, {
+                    cursor: messagesCursor,
+                    append: true,
+                  })
+                }
+                disabled={messagesLoadingMore}
+                className="w-full px-4 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-60"
+              >
+                {messagesLoadingMore ? "Loading..." : "Load older messages"}
+              </button>
+            )}
             {loadingMessages ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>

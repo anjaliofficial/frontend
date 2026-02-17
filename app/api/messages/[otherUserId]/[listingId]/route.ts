@@ -16,10 +16,11 @@ export async function GET(
   }
 
   const { otherUserId, listingId } = params;
+  const query = new URL(_req.url).searchParams.toString();
 
   try {
     const res = await fetch(
-      `${API_BASE}/api/messages/${otherUserId}/${listingId}`,
+      `${API_BASE}/api/messages/${otherUserId}/${listingId}${query ? `?${query}` : ""}`,
       {
         method: "GET",
         headers: {
