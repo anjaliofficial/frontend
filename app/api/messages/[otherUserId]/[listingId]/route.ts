@@ -8,14 +8,14 @@ const API_BASE = RAW_API_BASE.endsWith("/api")
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { otherUserId: string; listingId: string } },
+  { params }: { params: Promise<{ otherUserId: string; listingId: string }> },
 ) {
   const token = _req.cookies.get("token")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const { otherUserId, listingId } = params;
+  const { otherUserId, listingId } = await params;
   const query = new URL(_req.url).searchParams.toString();
 
   try {

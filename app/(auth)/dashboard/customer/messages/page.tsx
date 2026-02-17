@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
@@ -42,6 +42,7 @@ export default function CustomerMessagesPage() {
     const [messagesHasMore, setMessagesHasMore] = useState(false);
     const [messagesLoadingMore, setMessagesLoadingMore] = useState(false);
     const messagePageSize = 20;
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [draft, setDraft] = useState("");
     const [threads, setThreads] = useState<ThreadItem[]>([]);
     const [threadsLoading, setThreadsLoading] = useState(false);
@@ -69,10 +70,17 @@ export default function CustomerMessagesPage() {
     useEffect(() => {
         if (!ready) return;
 
-        const otherUserId =
-            searchParams.get("hostId") || searchParams.get("otherUserId") || "";
-        const listingId = searchParams.get("listingId") || "";
-        const bookingId = searchParams.get("bookingId") || "";
+        const normalizeId = (value: string | null) => {
+            if (!value) return "";
+            if (value === "undefined" || value === "null") return "";
+            return value;
+        };
+
+        const otherUserId = normalizeId(
+            searchParams.get("hostId") || searchParams.get("otherUserId"),
+        );
+        const listingId = normalizeId(searchParams.get("listingId")) || "all";
+        const bookingId = normalizeId(searchParams.get("bookingId"));
 
         setSelected({ otherUserId, listingId, bookingId });
     }, [ready, searchParams]);
@@ -137,6 +145,7 @@ export default function CustomerMessagesPage() {
             if (options?.cursor) {
                 params.set("cursor", options.cursor);
             }
+            params.set("scope", "all");
             const res = await fetch(`/api/messages/threads?${params.toString()}`, {
                 credentials: "include",
             });
@@ -148,10 +157,10 @@ export default function CustomerMessagesPage() {
             const items: ThreadItem[] = (data.threads || []).map((thread: any) => ({
                 id: `${thread.otherUserId}_${thread.listingId}`,
                 otherUserId: thread.otherUserId,
-                listingId: thread.listingId,
+                listingId: thread.listingId || "all",
                 bookingId: "",
                 title: thread.otherUserName || "Host",
-                subtitle: thread.listingTitle || "Listing",
+                subtitle: "",
                 lastMessage: thread.lastMessage?.content || "",
                 lastMessageAt: thread.lastMessage?.createdAt || "",
                 unread: Boolean(thread.unreadCount && thread.unreadCount > 0),
@@ -197,6 +206,18 @@ export default function CustomerMessagesPage() {
         listingId: string,
         options?: { cursor?: string | null; append?: boolean },
     ) => {
+        const normalizedListingId =
+            !listingId || listingId === "undefined" || listingId === "null"
+                ? "all"
+                : listingId;
+        if (!otherUserId || !normalizedListingId) {
+            if (!options?.append) {
+                setMessages([]);
+                setMessagesHasMore(false);
+                setMessagesCursor(null);
+            }
+            return;
+        }
         const append = Boolean(options?.append);
         if (append) {
             setMessagesLoadingMore(true);
@@ -210,7 +231,7 @@ export default function CustomerMessagesPage() {
                 params.set("cursor", options.cursor);
             }
             const res = await fetch(
-                `/api/messages/${otherUserId}/${listingId}?${params.toString()}`,
+                `/api/messages/${otherUserId}/${normalizedListingId}?${params.toString()}`,
                 { credentials: "include" },
             );
             const data = await res.json();
@@ -224,11 +245,14 @@ export default function CustomerMessagesPage() {
             setMessagesHasMore(Boolean(data.nextCursor));
 
             if (!append) {
-                await markThreadRead({ otherUserId, listingId });
+                await markThreadRead({
+                    otherUserId,
+                    listingId: normalizedListingId,
+                });
                 setThreads((prev) =>
                     prev.map((thread) =>
                         thread.otherUserId === otherUserId &&
-                            thread.listingId === listingId
+                            thread.listingId === normalizedListingId
                             ? { ...thread, unread: false }
                             : thread,
                     ),
@@ -251,13 +275,10 @@ export default function CustomerMessagesPage() {
         fetchMessages(selected.otherUserId, selected.listingId);
     }, [selected.otherUserId, selected.listingId]);
 
-    const handleSend = async (event: FormEvent) => {
-        event.preventDefault();
+    const sendMessage = async () => {
         if (!selected.otherUserId || !selected.listingId) return;
-
         const content = draft.trim();
         if (!content) return;
-
         try {
             const res = await fetch("/api/messages", {
                 method: "POST",
@@ -282,6 +303,16 @@ export default function CustomerMessagesPage() {
             console.error("Error sending message:", error);
         }
     };
+
+    const handleSend = async (event: FormEvent) => {
+        event.preventDefault();
+        await sendMessage();
+    };
+
+    useEffect(() => {
+        if (messagesLoadingMore) return;
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, messagesLoadingMore]);
 
     if (!ready || !user) {
         return (
@@ -311,7 +342,7 @@ export default function CustomerMessagesPage() {
                     ) : threads.length === 0 ? (
                         <p className="text-gray-500">No conversations yet.</p>
                     ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             {threads.map((thread) => {
                                 const isActive =
                                     thread.otherUserId === selected.otherUserId &&
@@ -327,15 +358,14 @@ export default function CustomerMessagesPage() {
                                                 bookingId: thread.bookingId,
                                             })
                                         }
-                                        className={`w-full text-left px-4 py-3 rounded-xl border transition ${isActive
+                                        className={`w-full text-left px-3 py-2 rounded-lg border transition ${isActive
                                             ? "border-blue-500 bg-blue-50"
                                             : "border-gray-200 hover:bg-gray-50"
                                             }`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
-                                                <p className="text-sm font-semibold text-gray-900 truncate">{thread.title}</p>
-                                                <p className="text-xs text-gray-500 truncate">{thread.subtitle}</p>
+                                                <p className="text-xs font-semibold text-gray-900 truncate">{thread.title}</p>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {thread.unread && (
@@ -344,12 +374,12 @@ export default function CustomerMessagesPage() {
                                                         New
                                                     </span>
                                                 )}
-                                                <span className="text-[11px] text-gray-400 whitespace-nowrap">
+                                                <span className="text-[10px] text-gray-400 whitespace-nowrap">
                                                     {formatTimestamp(thread.lastMessageAt)}
                                                 </span>
                                             </div>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-2 truncate">
+                                        <p className="text-[11px] text-gray-500 mt-1 truncate">
                                             {formatPreview(thread.lastMessage)}
                                         </p>
                                     </button>
@@ -400,32 +430,54 @@ export default function CustomerMessagesPage() {
                         ) : messages.length === 0 ? (
                             <p className="text-gray-500">No messages yet. Start the conversation.</p>
                         ) : (
-                            messages.map((message) => {
-                                const isOwn = message.sender === user.id;
-                                return (
-                                    <div
-                                        key={message._id}
-                                        className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${isOwn
-                                            ? "ml-auto bg-blue-600 text-white"
-                                            : "bg-gray-100 text-gray-800"
-                                            }`}
-                                    >
-                                        <p>{message.content}</p>
-                                        <p className={`mt-1 text-xs ${isOwn ? "text-blue-100" : "text-gray-500"}`}>
-                                            {new Date(message.createdAt).toLocaleString()}
-                                        </p>
-                                    </div>
-                                );
-                            })
+                            (() => {
+                                let lastDate = "";
+                                return messages.map((message) => {
+                                    const isOwn = message.sender === user.id;
+                                    const dateLabel = new Date(message.createdAt).toLocaleDateString();
+                                    const showDate = dateLabel !== lastDate;
+                                    lastDate = dateLabel;
+                                    return (
+                                        <div key={message._id}>
+                                            {showDate && (
+                                                <div className="text-center text-xs text-gray-400 my-3">
+                                                    {dateLabel}
+                                                </div>
+                                            )}
+                                            <div
+                                                className={`w-fit max-w-[65%] rounded-2xl px-4 py-2 text-sm break-words ${isOwn
+                                                    ? "ml-auto bg-blue-600 text-white"
+                                                    : "bg-gray-100 text-gray-800"
+                                                    }`}
+                                            >
+                                                <p>{message.content}</p>
+                                                <p className={`mt-1 text-xs ${isOwn ? "text-blue-100" : "text-gray-500"}`}>
+                                                    {new Date(message.createdAt).toLocaleString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()
                         )}
+                        <div ref={messagesEndRef} />
                     </div>
 
                     <form onSubmit={handleSend} className="border-t border-gray-200 p-4">
+                        {draft.trim() && (
+                            <div className="text-xs text-gray-500 mb-2">Typing...</div>
+                        )}
                         <div className="flex items-center gap-3">
                             <input
                                 type="text"
                                 value={draft}
                                 onChange={(event) => setDraft(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        void sendMessage();
+                                    }
+                                }}
                                 placeholder={
                                     selected.otherUserId && selected.listingId
                                         ? "Type your message..."
