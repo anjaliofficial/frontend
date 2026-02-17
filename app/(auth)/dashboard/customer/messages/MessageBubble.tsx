@@ -71,12 +71,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     ) : null;
 
     return (
-        <div className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-3 relative group`}>
+        <div className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-3 relative group ${isDeletedForEveryone ? "pointer-events-none opacity-60" : ""}`}>
             <div
                 className={`max-w-xs px-4 py-2 rounded-lg ${isOwnMessage
                     ? "bg-blue-500 text-white rounded-br-none"
                     : "bg-gray-200 text-gray-900 rounded-bl-none"
-                    }`}
+                    } ${isDeletedForEveryone ? "opacity-75" : ""}`}
             >
                 <div className="flex flex-col">
                     <p className={`text-sm ${isOwnMessage ? "text-white" : "text-gray-900"}`}>
@@ -95,7 +95,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </div>
 
             {/* Message options menu */}
-            {isOwnMessage && (
+            {isOwnMessage && !isDeletedForEveryone && (
                 <div ref={optionsRef} className="relative">
                     <button
                         onClick={() => setShowOptions(!showOptions)}
@@ -126,14 +126,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                             </button>
                             <button
                                 onClick={() => {
-                                    if (
-                                        confirm(
-                                            "This will delete the message for everyone. Are you sure?",
-                                        )
-                                    ) {
-                                        onDelete(message._id, "for_everyone");
-                                        setShowOptions(false);
-                                    }
+                                    onDelete(message._id, "for_everyone");
+                                    setShowOptions(false);
                                 }}
                                 className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100 border-t border-gray-300 rounded-b"
                             >

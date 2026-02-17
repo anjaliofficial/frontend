@@ -8,14 +8,9 @@ interface ContextMenuProps {
     y: number;
     isOwnMessage: boolean;
     onClose: () => void;
-    onReply: () => void;
     onCopy: () => void;
-    onForward: () => void;
-    onPin: () => void;
-    onStar: () => void;
     onEdit: () => void;
     onDelete: () => void;
-    onSelect: () => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -24,14 +19,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     y,
     isOwnMessage,
     onClose,
-    onReply,
     onCopy,
-    onForward,
-    onPin,
-    onStar,
     onEdit,
     onDelete,
-    onSelect,
 }) => {
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +58,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     let adjustedX = x;
     let adjustedY = y;
     const menuWidth = 200;
-    const menuHeight = isOwnMessage ? 320 : 240;
+    const menuHeight = isOwnMessage ? 150 : 100;
     const padding = 10;
 
     // Adjust X: if menu goes off right side, move it left
@@ -90,22 +80,19 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     }
 
     const menuItems = [
-        { icon: "ℹ️", label: "Message info", onClick: onReply },
-        { icon: "↩️", label: "Reply", onClick: onReply },
-        { icon: "📋", label: "Copy", onClick: onCopy },
-        { icon: "↪️", label: "Forward", onClick: onForward },
-        { icon: "📌", label: "Pin", onClick: onPin },
-        { icon: "⭐", label: "Star", onClick: onStar },
+        { label: "Copy", onClick: onCopy },
     ];
 
     if (isOwnMessage) {
         menuItems.push(
-            { icon: "✏️", label: "Edit", onClick: onEdit },
-            { icon: "🗑️", label: "Delete", onClick: onDelete }
+            { label: "Edit", onClick: onEdit },
+            { label: "Delete", onClick: onDelete }
+        );
+    } else {
+        menuItems.push(
+            { label: "Delete", onClick: onDelete }
         );
     }
-
-    menuItems.push({ icon: "☑️", label: "Select", onClick: onSelect });
 
     return (
         <>
@@ -132,9 +119,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                                 item.onClick();
                                 onClose();
                             }}
-                            className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center gap-3 text-sm"
+                            className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors text-sm"
                         >
-                            <span className="text-base">{item.icon}</span>
                             <span>{item.label}</span>
                         </button>
                         {index < menuItems.length - 1 && (

@@ -6,6 +6,7 @@ import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
 import ContextMenu from "./ContextMenu";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import Toast from "./Toast";
 
 interface Message {
   _id: string;
@@ -57,6 +58,7 @@ export default function HostMessagesPage() {
   const threadPageSize = 6;
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState({
@@ -303,6 +305,7 @@ export default function HostMessagesPage() {
     const content = draft.trim();
     if (!content) return;
     try {
+      console.log("Sending message from host to customer:", selected.otherUserId);
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -319,11 +322,14 @@ export default function HostMessagesPage() {
         throw new Error(data?.message || "Failed to send message");
       }
 
+      console.log("Message sent successfully:", data.data);
       setDraft("");
+      setToast({ message: "Message sent", type: "success" });
       fetchMessages(selected.otherUserId, selected.listingId);
       fetchThreads();
     } catch (error) {
       console.error("Error sending message:", error);
+      setToast({ message: "Failed to send message", type: "error" });
     }
   };
 
@@ -419,7 +425,7 @@ export default function HostMessagesPage() {
     const message = messages.find((m) => m._id === contextMenu.messageId);
     if (message) {
       navigator.clipboard.writeText(message.content).then(() => {
-        console.log("Message copied to clipboard");
+        setToast({ message: "Message copied to clipboard", type: "success" });
         setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
       });
     }
@@ -486,41 +492,6 @@ export default function HostMessagesPage() {
       console.error("Error deleting message:", err);
       throw err;
     }
-  };
-
-  const handleReply = () => {
-    console.log("Reply clicked");
-    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-  };
-
-  const handleForward = () => {
-    console.log("Forward clicked");
-    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-  };
-
-  const handlePin = () => {
-    console.log("Pin clicked");
-    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-  };
-
-  const handleStar = () => {
-    console.log("Star clicked");
-    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-  };
-
-  const handleEdit = () => {
-    console.log("Edit clicked");
-    const messageToEdit = messages.find((msg) => msg._id === contextMenu.messageId);
-    if (messageToEdit) {
-      setEditingMessageId(contextMenu.messageId);
-      setEditContent(messageToEdit.content);
-    }
-    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-  };
-
-  const handleSelect = () => {
-    console.log("Select clicked");
-    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
   };
 
   useEffect(() => {
@@ -661,13 +632,16 @@ export default function HostMessagesPage() {
                       )}
                       <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                         <div
-                          onContextMenu={(e) =>
-                            handleContextMenu(e, message._id, isOwn)
-                          }
-                          className={`w-fit max-w-[65%] rounded-2xl px-4 py-2 text-sm break-words cursor-context-menu ${isOwn
-                            ? "bg-emerald-600 text-white"
-                            : "bg-gray-100 text-gray-800"
-                            } ${message.isDeleted ? "opacity-60 italic" : ""}`}
+                          onContextMenu={(e) => {
+                            if (!message.isDeleted) {
+                              handleContextMenu(e, message._id, isOwn);
+                            }
+                          }}
+                          className={`w-fit max-w-[65%] rounded-2xl px-4 py-2 text-sm break-words ${!message.isDeleted ? "cursor-context-menu" : "cursor-default"
+                            } ${isOwn
+                              ? "bg-emerald-600 text-white"
+                              : "bg-gray-100 text-gray-800"
+                            } ${message.isDeleted ? "opacity-60 italic pointer-events-none" : ""}`}
                         >
                           {isEditingThis ? (
                             <div className="space-y-2">
@@ -704,27 +678,6 @@ export default function HostMessagesPage() {
                                   {new Date(message.createdAt).toLocaleString()}
                                   {message.isEdited && !message.isDeleted && " (edited)"}
                                 </p>
-                                {isOwn && !message.isDeleted && (
-                                  <div className="flex gap-1">
-                                    <button
-                                      onClick={() => {
-                                        setEditingMessageId(message._id);
-                                        setEditContent(message.content);
-                                      }}
-                                      className="text-xs px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded"
-                                      title="Edit message"
-                                    >
-                                      ✏️
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteMessage(message._id)}
-                                      className="text-xs px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded"
-                                      title="Delete message"
-                                    >
-                                      🗑️
-                                    </button>
-                                  </div>
-                                )}
                               </div>
                             </>
                           )}
@@ -780,11 +733,7 @@ export default function HostMessagesPage() {
             onClose={() =>
               setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false })
             }
-            onReply={handleReply}
             onCopy={handleCopyMessage}
-            onForward={handleForward}
-            onPin={handlePin}
-            onStar={handleStar}
             onEdit={() => {
               const messageToEdit = messages.find((msg) => msg._id === contextMenu.messageId);
               if (messageToEdit) {
@@ -798,7 +747,6 @@ export default function HostMessagesPage() {
               setDeleteConfirm({ isOpen: true, messageId: contextMenu.messageId });
               setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
             }}
-            onSelect={handleSelect}
           />
 
           {/* Delete Confirmation Modal */}
@@ -808,6 +756,15 @@ export default function HostMessagesPage() {
             onDeleteForMe={handleDeleteForMe}
             onDeleteForEveryone={handleDeleteForEveryone}
           />
+
+          {/* Toast Notification */}
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          )}
         </div>
       </div>
     </div>
