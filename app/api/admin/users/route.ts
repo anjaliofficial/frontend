@@ -26,6 +26,17 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(
+        `Admin error - Status: ${response.status}, Response: ${text}`,
+      );
+      return NextResponse.json(
+        { success: false, message: "Failed to fetch users from backend" },
+        { status: response.status },
+      );
+    }
+
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
@@ -64,6 +75,15 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(body),
     });
 
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`Admin error - Status: ${response.status}, Response: ${text}`);
+      return NextResponse.json(
+        { success: false, message: "Failed to update user from backend" },
+        { status: response.status },
+      );
+    }
+
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
@@ -98,6 +118,15 @@ export async function DELETE(req: NextRequest) {
         ...(authHeader ? { Authorization: authHeader } : {}),
       },
     });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`Admin error - Status: ${response.status}, Response: ${text}`);
+      return NextResponse.json(
+        { success: false, message: "Failed to delete user from backend" },
+        { status: response.status },
+      );
+    }
 
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });

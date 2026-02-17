@@ -6,17 +6,28 @@ const API_BASE = RAW_API_BASE.endsWith("/api")
   ? RAW_API_BASE.slice(0, -4)
   : RAW_API_BASE;
 
-export async function PATCH(req: NextRequest) {
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
   const token = req.cookies.get("token")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const payload = await req.json();
+  const { id } = await context.params;
+  const payload = await req.json();
 
-    const res = await fetch(`${API_BASE}/api/messages/read`, {
-      method: "PATCH",
+  if (!id) {
+    return NextResponse.json(
+      { message: "Review ID is required" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/reviews/${id}`, {
+      method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -24,23 +35,29 @@ export async function PATCH(req: NextRequest) {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) {
+    const contentType = res.headers.get("content-type");
+    if (!contentType?.includes("application/json")) {
       const responseText = await res.text();
       console.error(
-        `Backend error - Status: ${res.status}, Response: ${responseText}`,
+        `Invalid content type: ${contentType}, Response body: ${responseText}`,
       );
       return NextResponse.json(
-        { message: "Failed to mark messages as read from backend" },
-        { status: res.status },
+        { message: "Invalid response from backend" },
+        { status: 500 },
       );
     }
 
     const data = await res.json();
+
+    if (!res.ok) {
+      return NextResponse.json(data, { status: res.status });
+    }
+
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Error marking messages as read:", error);
+    console.error("Error updating review:", error);
     return NextResponse.json(
-      { message: "Failed to mark messages as read" },
+      { message: "Failed to update review" },
       { status: 500 },
     );
   }

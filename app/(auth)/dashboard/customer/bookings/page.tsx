@@ -164,10 +164,8 @@ export default function CustomerBookingsPage() {
     };
 
     const isReviewEligible = (booking: any) => {
-        if (!booking?.checkOutDate) return false;
-        const checkoutPassed = new Date(booking.checkOutDate).getTime() <= Date.now();
-        if (!checkoutPassed) return false;
-        return booking.status === "confirmed" || booking.status === "completed";
+        // Reviews can be added for any non-cancelled booking
+        return booking.status !== "cancelled";
     };
 
 

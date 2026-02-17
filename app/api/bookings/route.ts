@@ -11,15 +11,64 @@ export async function GET(req: NextRequest) {
   const searchParams = url.searchParams;
   const token = req.cookies.get("token")?.value;
 
-  // Check if this is for "my" bookings endpoint
-  if (url.pathname.endsWith("/bookings/my")) {
+  try {
+    // Check if this is for "my" bookings endpoint
+    if (url.pathname.endsWith("/bookings/my")) {
+      if (!token) {
+        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      }
+
+      const query = searchParams.toString();
+      const res = await fetch(
+        `${API_BASE}/api/bookings/my${query ? `?${query}` : ""}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!res.ok) {
+        const responseText = await res.text();
+        console.error(`Backend error - Status: ${res.status}, Response: ${responseText}`);
+        return NextResponse.json(
+          { message: "Failed to fetch bookings from backend" },
+          { status: res.status },
+        );
+      }
+
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+
+    // Check availability (public endpoint)
+    if (searchParams.has("checkInDate")) {
+      const res = await fetch(
+        `${API_BASE}/api/bookings/check-availability${url.search}`,
+      );
+      
+      if (!res.ok) {
+        const responseText = await res.text();
+        console.error(`Backend error - Status: ${res.status}, Response: ${responseText}`);
+        return NextResponse.json(
+          { message: "Failed to check availability from backend" },
+          { status: res.status },
+        );
+      }
+
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+
+    // Default GET - requires auth
     if (!token) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const query = searchParams.toString();
     const res = await fetch(
-      `${API_BASE}/api/bookings/my${query ? `?${query}` : ""}`,
+      `${API_BASE}/api/bookings${query ? `?${query}` : ""}`,
       {
         method: "GET",
         headers: {
@@ -28,37 +77,24 @@ export async function GET(req: NextRequest) {
       },
     );
 
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error(`Backend error - Status: ${res.status}, Response: ${responseText}`);
+      return NextResponse.json(
+        { message: "Failed to fetch bookings from backend" },
+        { status: res.status },
+      );
+    }
+
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  }
-
-  // Check availability (public endpoint)
-  if (searchParams.has("checkInDate")) {
-    const res = await fetch(
-      `${API_BASE}/api/bookings/check-availability${url.search}`,
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    return NextResponse.json(
+      { message: "Failed to fetch bookings" },
+      { status: 500 },
     );
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
   }
-
-  // Default GET - requires auth
-  if (!token) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  const query = searchParams.toString();
-  const res = await fetch(
-    `${API_BASE}/api/bookings${query ? `?${query}` : ""}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
 }
 
 export async function POST(req: NextRequest) {
@@ -67,16 +103,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
-  const res = await fetch(`${API_BASE}/api/bookings/customer`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
+  try {
+    const body = await req.json();
+    const res = await fetch(`${API_BASE}/api/bookings/customer`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
 
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error(`Backend error - Status: ${res.status}, Response: ${responseText}`);
+      return NextResponse.json(
+        { message: "Failed to create booking from backend" },
+        { status: res.status },
+      );
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    console.error("Error creating booking:", error);
+    return NextResponse.json(
+      { message: "Failed to create booking" },
+      { status: 500 },
+    );
+  }
 }

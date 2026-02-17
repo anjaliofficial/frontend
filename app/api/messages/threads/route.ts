@@ -27,6 +27,17 @@ export async function GET(req: NextRequest) {
       },
     );
 
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error(
+        `Backend error - Status: ${res.status}, Response: ${responseText}`,
+      );
+      return NextResponse.json(
+        { message: "Failed to fetch message threads from backend" },
+        { status: res.status },
+      );
+    }
+
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (error) {

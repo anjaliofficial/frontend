@@ -38,6 +38,15 @@ export async function POST(req: NextRequest) {
 
     console.log("[UPLOAD PROXY] Backend response status:", response.status);
 
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[UPLOAD PROXY] Error response:", text);
+      return NextResponse.json(
+        { success: false, message: `Upload failed (${response.status})` },
+        { status: response.status },
+      );
+    }
+
     // Check if response is JSON
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {

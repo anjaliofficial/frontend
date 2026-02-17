@@ -12,9 +12,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = await req.json();
-
   try {
+    const payload = await req.json();
+
     const res = await fetch(`${API_BASE}/api/messages`, {
       method: "POST",
       headers: {
@@ -23,6 +23,17 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify(payload),
     });
+
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error(
+        `Backend error - Status: ${res.status}, Response: ${responseText}`,
+      );
+      return NextResponse.json(
+        { message: "Failed to send message from backend" },
+        { status: res.status },
+      );
+    }
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });

@@ -6,6 +6,17 @@ import Link from "next/link";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
 
+interface Reply {
+    _id: string;
+    author: {
+        _id: string;
+        fullName: string;
+        profilePicture?: string;
+    };
+    text: string;
+    createdAt: string;
+}
+
 interface Review {
     _id: string;
     rating: number;
@@ -30,17 +41,6 @@ interface Review {
     createdAt: string;
 }
 
-interface Reply {
-    _id: string;
-    author: {
-        _id: string;
-        fullName: string;
-        profilePicture?: string;
-    };
-    text: string;
-    createdAt: string;
-}
-
 const toImageUrl = (path?: string) => {
     if (!path) return "";
     const normalized = path.replace(/\\/g, "/");
@@ -49,7 +49,7 @@ const toImageUrl = (path?: string) => {
     return `${cleaned}`;
 };
 
-export default function HostReviewsPage() {
+export default function CustomerReviewsPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
 
@@ -84,7 +84,7 @@ export default function HostReviewsPage() {
             return;
         }
 
-        if (user.role !== "host") {
+        if (user.role !== "customer") {
             router.replace(getDashboardPath(user.role));
             return;
         }
@@ -97,7 +97,7 @@ export default function HostReviewsPage() {
             setReviewsLoading(true);
             setReviewsError(null);
 
-            // Fetch reviews given by host
+            // Fetch reviews given by customer
             const givenResponse = await fetch("/api/reviews/given", {
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -113,10 +113,9 @@ export default function HostReviewsPage() {
             const givenData = await givenResponse.json();
             setGivenReviews(givenData.reviews || []);
 
-            // Fetch reviews received by host
-            const userId = (user as any)?.id || (user as any)?._id;
-            if (userId) {
-                const receivedResponse = await fetch(`/api/reviews/received/${userId}`, {
+            // Fetch reviews received by customer
+            if (user?.id) {
+                const receivedResponse = await fetch(`/api/reviews/received/${user.id}`, {
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                 });
@@ -281,93 +280,43 @@ export default function HostReviewsPage() {
         }
     };
 
-    const averageRatingGiven =
-        givenReviews.length > 0
-            ? parseFloat((givenReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / givenReviews.length).toFixed(1))
-            : 0;
-
-    const averageRatingReceived =
-        receivedReviews.length > 0
-            ? parseFloat((receivedReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / receivedReviews.length).toFixed(1))
-            : 0;
-
-    if (loading || reviewsLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
-
     const displayReviews = activeTab === "given" ? givenReviews : receivedReviews;
-    const displayAverage = activeTab === "given" ? averageRatingGiven : averageRatingReceived;
 
     return (
         <div className="max-w-6xl mx-auto p-6">
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">Reviews & Ratings</h1>
-                <p className="text-gray-600 text-lg">Manage reviews you've given and feedback you've received from customers</p>
-            </div>
+            <Link
+                href="/dashboard/customer/bookings"
+                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6"
+            >
+                <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
+                </svg>
+                Back to Bookings
+            </Link>
 
-            {/* Rating Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-gray-600 text-sm font-medium mb-1">
-                                {activeTab === "given" ? "Avg Rating Given" : "Avg Rating Received"}
-                            </p>
-                            <p className="text-4xl font-bold text-gray-900">{displayAverage}</p>
-                        </div>
-                        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
-                            <svg className="w-8 h-8 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-gray-600 text-sm font-medium mb-1">
-                                {activeTab === "given" ? "Total Given" : "Total Received"}
-                            </p>
-                            <p className="text-4xl font-bold text-gray-900">{displayReviews.length}</p>
-                        </div>
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-gray-600 text-sm font-medium mb-1">Your Rating</p>
-                            <p className="text-4xl font-bold text-gray-900">
-                                {receivedReviews.length > 0 ? averageRatingReceived : "N/A"}
-                            </p>
-                        </div>
-                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h-2m0 0H8m4 0v4m0-4v-4m8 12H4a2 2 0 01-2-2V6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Reviews Section with Tabs */}
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-6">
+                    <h1 className="text-3xl font-bold text-white">Reviews & Feedback</h1>
+                    <p className="text-blue-100 mt-1">Manage reviews you've given and feedback you've received</p>
+                </div>
+
                 {/* Tab Navigation */}
                 <div className="flex border-b border-gray-200">
                     <button
                         onClick={() => setActiveTab("given")}
                         className={`flex-1 px-6 py-4 font-medium text-center transition-colors ${activeTab === "given"
-                            ? "border-b-2 border-orange-600 text-orange-600 bg-orange-50"
+                            ? "border-b-2 border-blue-600 text-blue-600 bg-blue-50"
                             : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                             }`}
                     >
@@ -379,7 +328,7 @@ export default function HostReviewsPage() {
                     <button
                         onClick={() => setActiveTab("received")}
                         className={`flex-1 px-6 py-4 font-medium text-center transition-colors ${activeTab === "received"
-                            ? "border-b-2 border-blue-600 text-blue-600 bg-blue-50"
+                            ? "border-b-2 border-green-600 text-green-600 bg-green-50"
                             : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                             }`}
                     >
@@ -428,15 +377,15 @@ export default function HostReviewsPage() {
                                     <div
                                         key={review._id || `review-${idx}`}
                                         className={`border rounded-lg p-6 hover:shadow-lg transition-shadow ${activeTab === "given"
-                                            ? "border-orange-200 bg-orange-50"
-                                            : "border-blue-200 bg-blue-50"
+                                            ? "border-blue-200 bg-blue-50"
+                                            : "border-green-200 bg-green-50"
                                             }`}
                                     >
                                         <div className="flex items-start justify-between mb-4">
                                             <div className="flex items-center gap-4">
                                                 <button
-                                                    onClick={() => router.push(`/dashboard/host/profile/${person?._id}`)}
-                                                    className="w-14 h-14 rounded-full bg-gray-300 overflow-hidden flex items-center justify-center flex-shrink-0 hover:ring-2 hover:ring-orange-500 transition"
+                                                    onClick={() => router.push(`/dashboard/customer/profile/${person?._id}`)}
+                                                    className="w-14 h-14 rounded-full bg-gray-300 overflow-hidden flex items-center justify-center flex-shrink-0 hover:ring-2 hover:ring-blue-500 transition"
                                                 >
                                                     {person?.profilePicture ? (
                                                         <img
@@ -452,8 +401,8 @@ export default function HostReviewsPage() {
                                                 </button>
                                                 <div className="flex-1">
                                                     <button
-                                                        onClick={() => router.push(`/dashboard/host/profile/${person?._id}`)}
-                                                        className="font-semibold text-gray-900 text-lg hover:text-orange-600 hover:underline transition text-left"
+                                                        onClick={() => router.push(`/dashboard/customer/profile/${person?._id}`)}
+                                                        className="font-semibold text-gray-900 text-lg hover:text-blue-600 hover:underline transition text-left"
                                                     >
                                                         {person?.fullName}
                                                     </button>
@@ -470,7 +419,7 @@ export default function HostReviewsPage() {
                                             {activeTab === "given" && !isEditingThisReview && (
                                                 <button
                                                     onClick={() => handleEditReview(review)}
-                                                    className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 transition"
+                                                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                                                 >
                                                     Edit
                                                 </button>
@@ -478,7 +427,7 @@ export default function HostReviewsPage() {
                                         </div>
 
                                         {isEditingThisReview ? (
-                                            <div className="mt-4 p-4 bg-white rounded-lg border-2 border-orange-400 space-y-4">
+                                            <div className="mt-4 p-4 bg-white rounded-lg border-2 border-blue-400 space-y-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
                                                     <div className="flex gap-2">
@@ -507,7 +456,7 @@ export default function HostReviewsPage() {
                                                     <textarea
                                                         value={editComment}
                                                         onChange={(e) => setEditComment(e.target.value)}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                         rows={4}
                                                         placeholder="Update your review..."
                                                     />
@@ -516,7 +465,7 @@ export default function HostReviewsPage() {
                                                     <button
                                                         onClick={handleUpdateReview}
                                                         disabled={editSubmitting}
-                                                        className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 transition"
+                                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition"
                                                     >
                                                         {editSubmitting ? "Saving..." : "Save Changes"}
                                                     </button>
@@ -541,14 +490,14 @@ export default function HostReviewsPage() {
                                                             viewBox="0 0 20 20"
                                                             fill="currentColor"
                                                         >
-                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.965a1 1 0 00.95.69h4.17c.969 0 1.371 1.24.588 1.81l-3.374 2.452a1 1 0 00-.364 1.118l1.287 3.965c.3.921-.755 1.688-1.54 1.118l-3.374-2.452a1 1 0 00-1.175 0l-3.374 2.452c-.784.57-1.838-.197-1.539-1.118l1.286-3.965a1 1 0 00-.363-1.118L2.05 9.392c-.783-.57-.38-1.81.588-1.81h4.17a1 1 0 00.95-.69l1.287-3.965z" />
                                                         </svg>
                                                     ))}
                                                 </div>
 
                                                 {review.comment && (
                                                     <div className="mt-4 p-4 bg-white rounded-lg border-l-4"
-                                                        style={{ borderLeftColor: activeTab === "given" ? "#f97316" : "#3b82f6" }}>
+                                                        style={{ borderLeftColor: activeTab === "given" ? "#3b82f6" : "#10b981" }}>
                                                         <p className="text-gray-700 leading-relaxed">{review.comment}</p>
                                                     </div>
                                                 )}
@@ -557,7 +506,7 @@ export default function HostReviewsPage() {
 
                                         {/* Replies Section - Show only in received tab */}
                                         {activeTab === "received" && (
-                                            <div className="mt-6 pt-6 border-t border-blue-300">
+                                            <div className="mt-6 pt-6 border-t border-green-300">
                                                 <h4 className="font-semibold text-gray-900 mb-4">Replies</h4>
 
                                                 {review.replies && review.replies.length > 0 ? (
@@ -573,7 +522,7 @@ export default function HostReviewsPage() {
                                                                             {new Date(reply.createdAt).toLocaleDateString()}
                                                                         </p>
                                                                     </div>
-                                                                    {(user?.id === reply.author?._id || (user as any)?._id === reply.author?._id) ? (
+                                                                    {user?.id === reply.author?._id ? (
                                                                         <div className="flex gap-2">
                                                                             <button
                                                                                 onClick={() => {
@@ -628,19 +577,19 @@ export default function HostReviewsPage() {
 
                                                 {/* Add Reply Form */}
                                                 {replyingReviewId === review._id ? (
-                                                    <div className="bg-white p-4 rounded-lg border-2 border-blue-400 space-y-2">
+                                                    <div className="bg-white p-4 rounded-lg border-2 border-green-400 space-y-2">
                                                         <textarea
                                                             value={replyText}
                                                             onChange={(e) => setReplyText(e.target.value)}
                                                             placeholder="Write a reply..."
-                                                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                                             rows={3}
                                                         />
                                                         <div className="flex gap-2">
                                                             <button
                                                                 onClick={() => handleAddReply(review._id)}
                                                                 disabled={replySubmitting}
-                                                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition"
+                                                                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 transition"
                                                             >
                                                                 {replySubmitting ? "Sending..." : "Send Reply"}
                                                             </button>
@@ -658,7 +607,7 @@ export default function HostReviewsPage() {
                                                 ) : (
                                                     <button
                                                         onClick={() => setReplyingReviewId(review._id)}
-                                                        className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                                                        className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition"
                                                     >
                                                         Add Reply
                                                     </button>

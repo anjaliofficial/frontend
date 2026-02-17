@@ -31,6 +31,15 @@ export async function GET(req: NextRequest) {
 
     console.log("GET /api/listings/my - Backend response status:", res.status);
 
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("GET /api/listings/my - Error response:", text.substring(0, 500));
+      return NextResponse.json(
+        { message: "Failed to fetch listings", listings: [] },
+        { status: res.status },
+      );
+    }
+
     const contentType = res.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const data = await res.json();
@@ -46,7 +55,7 @@ export async function GET(req: NextRequest) {
         details: text,
         listings: [],
       },
-      { status: res.status || 500 },
+      { status: 500 },
     );
   } catch (error) {
     console.error("GET /api/listings/my - Error:", error);

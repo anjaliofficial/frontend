@@ -34,6 +34,15 @@ export async function PUT(
 
     console.log(`[CANCEL] Response status: ${res.status}`);
 
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("[CANCEL] Error response:", text.substring(0, 500));
+      return NextResponse.json(
+        { message: `Failed to cancel booking (${res.status})` },
+        { status: res.status },
+      );
+    }
+
     const contentType = res.headers.get("content-type");
     console.log(`[CANCEL] Response content-type: ${contentType}`);
 
@@ -42,16 +51,12 @@ export async function PUT(
       console.error("[CANCEL] Non-JSON response:", text.substring(0, 500));
       return NextResponse.json(
         { message: `Server returned non-JSON response (status ${res.status})` },
-        { status: res.status || 500 },
+        { status: 500 },
       );
     }
 
     const data = await res.json();
     console.log("[CANCEL] Response data:", data);
-
-    if (!res.ok) {
-      return NextResponse.json(data, { status: res.status });
-    }
 
     return NextResponse.json(data);
   } catch (error) {

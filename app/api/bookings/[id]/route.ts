@@ -16,15 +16,32 @@ export async function GET(
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error(`Backend error - Status: ${res.status}, Response: ${responseText}`);
+      return NextResponse.json(
+        { message: "Failed to fetch booking from backend" },
+        { status: res.status },
+      );
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    console.error("Error fetching booking:", error);
+    return NextResponse.json(
+      { message: "Failed to fetch booking" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(
@@ -37,32 +54,58 @@ export async function POST(
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const url = new URL(req.url);
+  try {
+    const url = new URL(req.url);
 
-  // Handle cancel booking
-  if (url.pathname.includes("/cancel")) {
-    const res = await fetch(`${API_BASE}/api/bookings/${id}/cancel`, {
+    // Handle cancel booking
+    if (url.pathname.includes("/cancel")) {
+      const res = await fetch(`${API_BASE}/api/bookings/${id}/cancel`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const responseText = await res.text();
+        console.error(`Backend error - Status: ${res.status}, Response: ${responseText}`);
+        return NextResponse.json(
+          { message: "Failed to cancel booking from backend" },
+          { status: res.status },
+        );
+      }
+
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+
+    // Generic POST handler
+    const body = await req.json();
+    const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
       method: "POST",
       headers: {
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
+      body: JSON.stringify(body),
     });
+
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error(`Backend error - Status: ${res.status}, Response: ${responseText}`);
+      return NextResponse.json(
+        { message: "Failed to update booking from backend" },
+        { status: res.status },
+      );
+    }
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    console.error("Error updating booking:", error);
+    return NextResponse.json(
+      { message: "Failed to update booking" },
+      { status: 500 },
+    );
   }
-
-  // Generic POST handler
-  const body = await req.json();
-  const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
 }

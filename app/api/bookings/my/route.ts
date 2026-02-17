@@ -12,19 +12,38 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const url = new URL(req.url);
-  const query = url.searchParams.toString();
+  try {
+    const url = new URL(req.url);
+    const query = url.searchParams.toString();
 
-  const res = await fetch(
-    `${API_BASE}/api/bookings/my${query ? `?${query}` : ""}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
+    const res = await fetch(
+      `${API_BASE}/api/bookings/my${query ? `?${query}` : ""}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    },
-  );
+    );
 
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error(
+        `Backend error - Status: ${res.status}, Response: ${responseText}`,
+      );
+      return NextResponse.json(
+        { message: "Failed to fetch bookings from backend" },
+        { status: res.status },
+      );
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    return NextResponse.json(
+      { message: "Failed to fetch bookings" },
+      { status: 500 },
+    );
+  }
 }

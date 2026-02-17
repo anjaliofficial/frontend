@@ -6,22 +6,31 @@ const API_BASE = RAW_API_BASE.endsWith("/api")
   ? RAW_API_BASE.slice(0, -4)
   : RAW_API_BASE;
 
-export async function PATCH(req: NextRequest) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
+  const { userId } = await params;
   const token = req.cookies.get("token")?.value;
+
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const payload = await req.json();
+  if (!userId) {
+    return NextResponse.json(
+      { message: "User ID is required" },
+      { status: 400 },
+    );
+  }
 
-    const res = await fetch(`${API_BASE}/api/messages/read`, {
-      method: "PATCH",
+  try {
+    const res = await fetch(`${API_BASE}/api/reviews/received/${userId}`, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -30,7 +39,7 @@ export async function PATCH(req: NextRequest) {
         `Backend error - Status: ${res.status}, Response: ${responseText}`,
       );
       return NextResponse.json(
-        { message: "Failed to mark messages as read from backend" },
+        { message: "Failed to fetch reviews from backend" },
         { status: res.status },
       );
     }
@@ -38,9 +47,9 @@ export async function PATCH(req: NextRequest) {
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Error marking messages as read:", error);
+    console.error("Error fetching reviews:", error);
     return NextResponse.json(
-      { message: "Failed to mark messages as read" },
+      { message: "Failed to fetch reviews" },
       { status: 500 },
     );
   }

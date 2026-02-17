@@ -24,6 +24,29 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(payload),
     });
 
+    // Check if response is ok before parsing JSON
+    if (!res.ok) {
+      const responseText = await res.text();
+      console.error(
+        `Backend error - Status: ${res.status}, Response: ${responseText}`,
+      );
+      return NextResponse.json(
+        { message: "Failed to create review from backend" },
+        { status: res.status },
+      );
+    }
+
+    const contentType = res.headers.get("content-type");
+    if (!contentType?.includes("application/json")) {
+      console.error(
+        `Invalid content type: ${contentType}, Response body: ${await res.text()}`,
+      );
+      return NextResponse.json(
+        { message: "Invalid response from backend" },
+        { status: 500 },
+      );
+    }
+
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
