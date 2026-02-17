@@ -208,10 +208,16 @@ export default function HostReviewsPage() {
             const responseData = await res.json();
             const updatedReview = responseData.data || responseData;
 
-            // Update local state
-            setReceivedReviews(receivedReviews.map(r =>
-                r._id === reviewId ? updatedReview : r
-            ));
+            // Update local state based on active tab
+            if (activeTab === "given") {
+                setGivenReviews(givenReviews.map(r =>
+                    r._id === reviewId ? updatedReview : r
+                ));
+            } else {
+                setReceivedReviews(receivedReviews.map(r =>
+                    r._id === reviewId ? updatedReview : r
+                ));
+            }
 
             setReplyingReviewId(null);
             setReplyText("");
@@ -241,9 +247,16 @@ export default function HostReviewsPage() {
             const responseData = await res.json();
             const updatedReview = responseData.data || responseData;
 
-            setReceivedReviews(receivedReviews.map(r =>
-                r._id === reviewId ? updatedReview : r
-            ));
+            // Update based on active tab
+            if (activeTab === "given") {
+                setGivenReviews(givenReviews.map(r =>
+                    r._id === reviewId ? updatedReview : r
+                ));
+            } else {
+                setReceivedReviews(receivedReviews.map(r =>
+                    r._id === reviewId ? updatedReview : r
+                ));
+            }
         } catch (error) {
             alert(error instanceof Error ? error.message : "Failed to delete reply");
         }
@@ -273,9 +286,16 @@ export default function HostReviewsPage() {
             const responseData = await res.json();
             const updatedReview = responseData.data || responseData;
 
-            setReceivedReviews(receivedReviews.map(r =>
-                r._id === reviewId ? updatedReview : r
-            ));
+            // Update based on active tab
+            if (activeTab === "given") {
+                setGivenReviews(givenReviews.map(r =>
+                    r._id === reviewId ? updatedReview : r
+                ));
+            } else {
+                setReceivedReviews(receivedReviews.map(r =>
+                    r._id === reviewId ? updatedReview : r
+                ));
+            }
 
             setEditingReplyId(null);
             setEditingReplyReviewId(null);
@@ -561,116 +581,114 @@ export default function HostReviewsPage() {
                                             </>
                                         )}
 
-                                        {/* Replies Section - Show only in received tab */}
-                                        {activeTab === "received" && (
-                                            <div className="mt-6 pt-6 border-t border-blue-300">
-                                                <h4 className="font-semibold text-gray-900 mb-4">Replies</h4>
+                                        {/* Replies Section - Show in both tabs */}
+                                        <div className={`mt-6 pt-6 border-t ${activeTab === "given" ? "border-orange-300" : "border-blue-300"}`}>
+                                            <h4 className="font-semibold text-gray-900 mb-4">Replies</h4>
 
-                                                {review.replies && review.replies.length > 0 ? (
-                                                    <div className="space-y-3 mb-4">
-                                                        {review.replies.map((reply) => (
-                                                            <div key={reply._id} className="bg-white p-3 rounded-lg border border-gray-200">
-                                                                <div className="flex items-start justify-between mb-2">
-                                                                    <div>
-                                                                        <p className="font-medium text-gray-900 text-sm">
-                                                                            {reply.author?.fullName}
-                                                                        </p>
-                                                                        <p className="text-xs text-gray-500">
-                                                                            {new Date(reply.createdAt).toLocaleDateString()}
-                                                                        </p>
-                                                                    </div>
-                                                                    {(user?.id === reply.author?._id || (user as any)?._id === reply.author?._id) ? (
-                                                                        <div className="flex gap-2">
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setEditingReplyId(reply._id);
-                                                                                    setEditingReplyReviewId(review._id);
-                                                                                    setEditReplyText(reply.text);
-                                                                                }}
-                                                                                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                                                                            >
-                                                                                Edit
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => handleDeleteReply(review._id, reply._id)}
-                                                                                className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                                                                            >
-                                                                                Delete
-                                                                            </button>
-                                                                        </div>
-                                                                    ) : null}
+                                            {review.replies && review.replies.length > 0 ? (
+                                                <div className="space-y-3 mb-4">
+                                                    {review.replies.map((reply) => (
+                                                        <div key={reply._id} className="bg-white p-3 rounded-lg border border-gray-200">
+                                                            <div className="flex items-start justify-between mb-2">
+                                                                <div>
+                                                                    <p className="font-medium text-gray-900 text-sm">
+                                                                        {reply.author?.fullName}
+                                                                    </p>
+                                                                    <p className="text-xs text-gray-500">
+                                                                        {new Date(reply.createdAt).toLocaleDateString()}
+                                                                    </p>
                                                                 </div>
-                                                                {editingReplyId === reply._id ? (
-                                                                    <div className="space-y-2">
-                                                                        <textarea
-                                                                            value={editReplyText}
-                                                                            onChange={(e) => setEditReplyText(e.target.value)}
-                                                                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                                                                            rows={2}
-                                                                        />
-                                                                        <div className="flex gap-2">
-                                                                            <button
-                                                                                onClick={() => handleUpdateReply(review._id, reply._id)}
-                                                                                disabled={editReplySubmitting}
-                                                                                className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                                                                            >
-                                                                                {editReplySubmitting ? "Saving..." : "Save"}
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => setEditingReplyId(null)}
-                                                                                className="text-xs px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                                                                            >
-                                                                                Cancel
-                                                                            </button>
-                                                                        </div>
+                                                                {(user?.id === reply.author?._id || (user as any)?._id === reply.author?._id) ? (
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditingReplyId(reply._id);
+                                                                                setEditingReplyReviewId(review._id);
+                                                                                setEditReplyText(reply.text);
+                                                                            }}
+                                                                            className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteReply(review._id, reply._id)}
+                                                                            className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                                                        >
+                                                                            Delete
+                                                                        </button>
                                                                     </div>
-                                                                ) : (
-                                                                    <p className="text-gray-700 text-sm">{reply.text}</p>
-                                                                )}
+                                                                ) : null}
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                ) : null}
-
-                                                {/* Add Reply Form */}
-                                                {replyingReviewId === review._id ? (
-                                                    <div className="bg-white p-4 rounded-lg border-2 border-blue-400 space-y-2">
-                                                        <textarea
-                                                            value={replyText}
-                                                            onChange={(e) => setReplyText(e.target.value)}
-                                                            placeholder="Write a reply..."
-                                                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                            rows={3}
-                                                        />
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={() => handleAddReply(review._id)}
-                                                                disabled={replySubmitting}
-                                                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition"
-                                                            >
-                                                                {replySubmitting ? "Sending..." : "Send Reply"}
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    setReplyingReviewId(null);
-                                                                    setReplyText("");
-                                                                }}
-                                                                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition"
-                                                            >
-                                                                Cancel
-                                                            </button>
+                                                            {editingReplyId === reply._id ? (
+                                                                <div className="space-y-2">
+                                                                    <textarea
+                                                                        value={editReplyText}
+                                                                        onChange={(e) => setEditReplyText(e.target.value)}
+                                                                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                                                        rows={2}
+                                                                    />
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => handleUpdateReply(review._id, reply._id)}
+                                                                            disabled={editReplySubmitting}
+                                                                            className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                                                                        >
+                                                                            {editReplySubmitting ? "Saving..." : "Save"}
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setEditingReplyId(null)}
+                                                                            className="text-xs px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-gray-700 text-sm">{reply.text}</p>
+                                                            )}
                                                         </div>
+                                                    ))}
+                                                </div>
+                                            ) : null}
+
+                                            {/* Add Reply Form */}
+                                            {replyingReviewId === review._id ? (
+                                                <div className={`bg-white p-4 rounded-lg border-2 space-y-2 ${activeTab === "given" ? "border-orange-400" : "border-blue-400"}`}>
+                                                    <textarea
+                                                        value={replyText}
+                                                        onChange={(e) => setReplyText(e.target.value)}
+                                                        placeholder="Write a reply..."
+                                                        className={`w-full p-2 border border-gray-300 rounded focus:ring-2 focus:border-transparent ${activeTab === "given" ? "focus:ring-orange-500" : "focus:ring-blue-500"}`}
+                                                        rows={3}
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleAddReply(review._id)}
+                                                            disabled={replySubmitting}
+                                                            className={`px-4 py-2 text-white rounded disabled:opacity-50 transition ${activeTab === "given" ? "bg-orange-600 hover:bg-orange-700" : "bg-blue-600 hover:bg-blue-700"}`}
+                                                        >
+                                                            {replySubmitting ? "Sending..." : "Send Reply"}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setReplyingReviewId(null);
+                                                                setReplyText("");
+                                                            }}
+                                                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition"
+                                                        >
+                                                            Cancel
+                                                        </button>
                                                     </div>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => setReplyingReviewId(review._id)}
-                                                        className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                                                    >
-                                                        Add Reply
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setReplyingReviewId(review._id)}
+                                                    className={`px-4 py-2 text-sm text-white rounded transition ${activeTab === "given" ? "bg-orange-600 hover:bg-orange-700" : "bg-blue-600 hover:bg-blue-700"}`}
+                                                >
+                                                    Add Reply
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}

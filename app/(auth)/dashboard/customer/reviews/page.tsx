@@ -120,8 +120,9 @@ export default function CustomerReviewsPage() {
             setGivenReviews(givenData.reviews || []);
 
             // Fetch reviews received by customer
-            if (user?.id) {
-                const receivedResponse = await fetch(`/api/reviews/received/${user.id}`, {
+            const userId = (user as any)?.id || (user as any)?._id;
+            if (userId) {
+                const receivedResponse = await fetch(`/api/reviews/received/${userId}`, {
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                 });
@@ -286,37 +287,87 @@ export default function CustomerReviewsPage() {
         }
     };
 
+    const averageRatingGiven =
+        givenReviews.length > 0
+            ? parseFloat((givenReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / givenReviews.length).toFixed(1))
+            : 0;
+
+    const averageRatingReceived =
+        receivedReviews.length > 0
+            ? parseFloat((receivedReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / receivedReviews.length).toFixed(1))
+            : 0;
+
+    if (loading || reviewsLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
     const displayReviews = activeTab === "given" ? givenReviews : receivedReviews;
+    const displayAverage = activeTab === "given" ? averageRatingGiven : averageRatingReceived;
 
     return (
         <div className="max-w-6xl mx-auto p-6">
-            <Link
-                href="/dashboard/customer/bookings"
-                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6"
-            >
-                <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                    />
-                </svg>
-                Back to Bookings
-            </Link>
+            <div className="mb-8">
+                <h1 className="text-4xl font-bold text-gray-900 mb-2">Reviews & Ratings</h1>
+                <p className="text-gray-600 text-lg">Manage reviews you've given and feedback you've received from hosts</p>
+            </div>
 
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-6">
-                    <h1 className="text-3xl font-bold text-white">Reviews & Feedback</h1>
-                    <p className="text-blue-100 mt-1">Manage reviews you've given and feedback you've received</p>
+            {/* Rating Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm font-medium mb-1">
+                                {activeTab === "given" ? "Avg Rating Given" : "Avg Rating Received"}
+                            </p>
+                            <p className="text-4xl font-bold text-gray-900">{displayAverage}</p>
+                        </div>
+                        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <svg className="w-8 h-8 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
 
+                <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm font-medium mb-1">
+                                {activeTab === "given" ? "Total Given" : "Total Received"}
+                            </p>
+                            <p className="text-4xl font-bold text-gray-900">{displayReviews.length}</p>
+                        </div>
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm font-medium mb-1">Your Rating</p>
+                            <p className="text-4xl font-bold text-gray-900">
+                                {receivedReviews.length > 0 ? averageRatingReceived : "N/A"}
+                            </p>
+                        </div>
+                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h-2m0 0H8m4 0v4m0-4v-4m8 12H4a2 2 0 01-2-2V6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Reviews Section with Tabs */}
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                 {/* Tab Navigation */}
                 <div className="flex border-b border-gray-200">
                     <button
@@ -528,7 +579,7 @@ export default function CustomerReviewsPage() {
                                                                             {new Date(reply.createdAt).toLocaleDateString()}
                                                                         </p>
                                                                     </div>
-                                                                    {user?.id === reply.author?._id ? (
+                                                                    {(user?.id === reply.author?._id || (user as any)?._id === reply.author?._id) ? (
                                                                         <div className="flex gap-2">
                                                                             <button
                                                                                 onClick={() => {
@@ -536,7 +587,7 @@ export default function CustomerReviewsPage() {
                                                                                     setEditingReplyReviewId(review._id);
                                                                                     setEditReplyText(reply.text);
                                                                                 }}
-                                                                                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                                                className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
                                                                             >
                                                                                 Edit
                                                                             </button>
@@ -554,14 +605,14 @@ export default function CustomerReviewsPage() {
                                                                         <textarea
                                                                             value={editReplyText}
                                                                             onChange={(e) => setEditReplyText(e.target.value)}
-                                                                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                                                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500"
                                                                             rows={2}
                                                                         />
                                                                         <div className="flex gap-2">
                                                                             <button
                                                                                 onClick={() => handleUpdateReply(review._id, reply._id)}
                                                                                 disabled={editReplySubmitting}
-                                                                                className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                                                                                className="text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                                                                             >
                                                                                 {editReplySubmitting ? "Saving..." : "Save"}
                                                                             </button>
