@@ -18,6 +18,7 @@ export default function HostBookingsPage() {
     const [bookings, setBookings] = useState([]);
     const [stats, setStats] = useState<BookingStats | null>(null);
     const [bookingLoading, setBookingLoading] = useState(true);
+    const [reviewedIds, setReviewedIds] = useState<Record<string, boolean>>({});
     const router = useRouter();
 
     useEffect(() => {
@@ -51,6 +52,7 @@ export default function HostBookingsPage() {
             }
 
             setBookings(data.bookings || []);
+            fetchReviewedBookings(data.bookings || []);
 
             if (data.bookings) {
                 const totalBookings = data.bookings.length;
@@ -65,6 +67,35 @@ export default function HostBookingsPage() {
             console.error("Error fetching bookings:", error);
         } finally {
             setBookingLoading(false);
+        }
+    };
+
+    const fetchReviewedBookings = async (items: any[]) => {
+        const bookingIds = items.map((booking) => booking._id).filter(Boolean);
+        if (bookingIds.length === 0) {
+            setReviewedIds({});
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.set("bookingIds", bookingIds.join(","));
+
+        try {
+            const response = await fetch(`/api/reviews/mine?${params.toString()}`, {
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+            });
+
+            if (!response.ok) return;
+            const data = await response.json();
+            const reviewedList = data.reviewedBookingIds || [];
+            const reviewedMap = reviewedList.reduce((acc: Record<string, boolean>, id: string) => {
+                acc[id] = true;
+                return acc;
+            }, {});
+            setReviewedIds(reviewedMap);
+        } catch (error) {
+            console.error("Error fetching reviewed bookings:", error);
         }
     };
 
@@ -91,6 +122,19 @@ export default function HostBookingsPage() {
         return query ? `/dashboard/host/messages?${query}` : "/dashboard/host/messages";
     };
 
+    const getProfileUrl = (booking: any, includeReview: boolean) => {
+        const customerId = booking.customerId?._id || booking.customerId;
+        if (!customerId) return "/dashboard/host/profile";
+        const params = new URLSearchParams();
+        if (includeReview && booking._id) params.set("bookingId", booking._id);
+        if (booking.listingId?.title)
+            params.set("listingTitle", booking.listingId.title);
+        const query = params.toString();
+        return query
+            ? `/dashboard/host/profile/${customerId}?${query}`
+            : `/dashboard/host/profile/${customerId}`;
+    };
+
     const rejectBooking = async (bookingId: string) => {
         try {
             await fetch(`/api/bookings/host/${bookingId}/reject`, {
@@ -103,6 +147,14 @@ export default function HostBookingsPage() {
             console.error("Error rejecting booking:", error);
         }
     };
+
+    const isReviewEligible = (booking: any) => {
+        if (!booking?.checkOutDate) return false;
+        const checkoutPassed = new Date(booking.checkOutDate).getTime() <= Date.now();
+        if (!checkoutPassed) return false;
+        return booking.status === "confirmed" || booking.status === "completed";
+    };
+
 
     if (!ready || !user) {
         return (
@@ -203,6 +255,24 @@ export default function HostBookingsPage() {
                                                 >
                                                     Chat
                                                 </Link>
+                                                <Link
+                                                    href={getProfileUrl(booking, false)}
+                                                    className="px-3 py-1 border border-gray-200 text-gray-700 rounded hover:bg-gray-50 transition text-xs"
+                                                >
+                                                    View Guest
+                                                </Link>
+                                                {reviewedIds[booking._id] ? (
+                                                    <span className="px-3 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded">
+                                                        Reviewed
+                                                    </span>
+                                                ) : isReviewEligible(booking) ? (
+                                                    <Link
+                                                        href={getProfileUrl(booking, true)}
+                                                        className="px-3 py-1 border border-amber-200 text-amber-700 rounded hover:bg-amber-50 transition text-xs"
+                                                    >
+                                                        Review Guest
+                                                    </Link>
+                                                ) : null}
                                                 {booking.status === "pending" && (
                                                     <>
                                                         <button

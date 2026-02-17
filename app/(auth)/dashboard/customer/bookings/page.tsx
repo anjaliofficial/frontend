@@ -24,6 +24,7 @@ export default function CustomerBookingsPage() {
     const [ready, setReady] = useState(false);
     const [bookings, setBookings] = useState([]);
     const [bookingLoading, setBookingLoading] = useState(true);
+    const [reviewedIds, setReviewedIds] = useState<Record<string, boolean>>({});
     const router = useRouter();
 
     useEffect(() => {
@@ -55,10 +56,42 @@ export default function CustomerBookingsPage() {
             if (!response.ok) throw new Error("Failed to fetch bookings");
             const data = await response.json();
             setBookings(data.bookings || []);
+            fetchReviewedBookings(data.bookings || []);
         } catch (error) {
             console.error("Error fetching bookings:", error);
         } finally {
             setBookingLoading(false);
+        }
+    };
+
+    const fetchReviewedBookings = async (items: any[]) => {
+        const bookingIds = items.map((booking) => booking._id).filter(Boolean);
+        if (bookingIds.length === 0) {
+            setReviewedIds({});
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.set("bookingIds", bookingIds.join(","));
+
+        try {
+            const response = await fetch(`/api/reviews/mine?${params.toString()}`, {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+            });
+
+            if (!response.ok) return;
+            const data = await response.json();
+            const reviewedList = data.reviewedBookingIds || [];
+            const reviewedMap = reviewedList.reduce((acc: Record<string, boolean>, id: string) => {
+                acc[id] = true;
+                return acc;
+            }, {});
+            setReviewedIds(reviewedMap);
+        } catch (error) {
+            console.error("Error fetching reviewed bookings:", error);
         }
     };
 
@@ -116,6 +149,27 @@ export default function CustomerBookingsPage() {
         const query = params.toString();
         return query ? `/dashboard/customer/messages?${query}` : "/dashboard/customer/messages";
     };
+
+    const getProfileUrl = (booking: any, includeReview: boolean) => {
+        const hostId = booking.hostId?._id || booking.hostId;
+        if (!hostId) return "/dashboard/customer/profile";
+        const params = new URLSearchParams();
+        if (includeReview && booking._id) params.set("bookingId", booking._id);
+        if (booking.listingId?.title)
+            params.set("listingTitle", booking.listingId.title);
+        const query = params.toString();
+        return query
+            ? `/dashboard/customer/profile/${hostId}?${query}`
+            : `/dashboard/customer/profile/${hostId}`;
+    };
+
+    const isReviewEligible = (booking: any) => {
+        if (!booking?.checkOutDate) return false;
+        const checkoutPassed = new Date(booking.checkOutDate).getTime() <= Date.now();
+        if (!checkoutPassed) return false;
+        return booking.status === "confirmed" || booking.status === "completed";
+    };
+
 
     if (!ready || !user) {
         return (
@@ -222,6 +276,24 @@ export default function CustomerBookingsPage() {
                                                     >
                                                         Chat
                                                     </Link>
+                                                    <Link
+                                                        href={getProfileUrl(booking, false)}
+                                                        className="px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-all"
+                                                    >
+                                                        View Host
+                                                    </Link>
+                                                    {reviewedIds[booking._id] ? (
+                                                        <span className="px-4 py-2 text-sm font-semibold text-green-700 bg-green-100 rounded-lg">
+                                                            Reviewed
+                                                        </span>
+                                                    ) : isReviewEligible(booking) ? (
+                                                        <Link
+                                                            href={getProfileUrl(booking, true)}
+                                                            className="px-4 py-2 border-2 border-emerald-600 text-emerald-700 rounded-lg hover:bg-emerald-50 font-semibold transition-all"
+                                                        >
+                                                            Leave Review
+                                                        </Link>
+                                                    ) : null}
                                                     {booking.status === "pending" ? (
                                                         <button
                                                             onClick={() => cancelBooking(booking._id)}
