@@ -6,6 +6,12 @@ import Link from "next/link";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
 
+const RAW_API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5050";
+const API_BASE = RAW_API_BASE.endsWith("/api")
+    ? RAW_API_BASE.slice(0, -4)
+    : RAW_API_BASE;
+
 interface Review {
     _id: string;
     rating: number;
@@ -46,7 +52,7 @@ const toImageUrl = (path?: string) => {
     const normalized = path.replace(/\\/g, "/");
     if (normalized.startsWith("http")) return normalized;
     const cleaned = normalized.startsWith("/") ? normalized : `/${normalized}`;
-    return `${cleaned}`;
+    return `${API_BASE}${cleaned}`;
 };
 
 export default function HostReviewsPage() {
