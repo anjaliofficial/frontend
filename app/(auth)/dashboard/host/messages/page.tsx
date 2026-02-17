@@ -41,8 +41,9 @@ export default function HostMessagesPage() {
   const [draft, setDraft] = useState("");
   const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
-  const [threadsPage, setThreadsPage] = useState(1);
-  const [totalThreads, setTotalThreads] = useState(0);
+  const [threadsCursor, setThreadsCursor] = useState<string | null>(null);
+  const [threadsHasMore, setThreadsHasMore] = useState(false);
+  const [threadsLoadingMore, setThreadsLoadingMore] = useState(false);
   const threadPageSize = 6;
 
   useEffect(() => {
@@ -88,6 +89,25 @@ export default function HostMessagesPage() {
     router.replace(query ? `/dashboard/host/messages?${query}` : "/dashboard/host/messages");
   };
 
+  const markThreadRead = async (thread: {
+    otherUserId: string;
+    listingId: string;
+  }) => {
+    try {
+      await fetch("/api/messages/read", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          otherUserId: thread.otherUserId,
+          listingId: thread.listingId,
+        }),
+      });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
+  };
+
   const formatPreview = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return "No messages yet";
@@ -99,75 +119,61 @@ export default function HostMessagesPage() {
     return new Date(value).toLocaleString();
   };
 
-  const fetchThreads = async () => {
-    setThreadsLoading(true);
+  const fetchThreads = async (options?: {
+    cursor?: string | null;
+    append?: boolean;
+  }) => {
+    const append = Boolean(options?.append);
+    if (append) {
+      setThreadsLoadingMore(true);
+    } else {
+      setThreadsLoading(true);
+    }
     try {
-      const res = await fetch("/api/bookings/host", {
+      const params = new URLSearchParams();
+      params.set("limit", String(threadPageSize));
+      if (options?.cursor) {
+        params.set("cursor", options.cursor);
+      }
+      const res = await fetch(`/api/messages/threads?${params.toString()}`, {
         credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.message || "Failed to load threads");
       }
-      const bookings = data.bookings || [];
-      setTotalThreads(bookings.length);
-      const pagedBookings = bookings.slice(0, threadPageSize * threadsPage);
 
-      const items = await Promise.all(
-        pagedBookings.map(async (booking: any) => {
-          const customer = booking.customerId || {};
-          const listing = booking.listingId || {};
-          const otherUserId = customer._id || booking.customerId || "";
-          const listingId = listing._id || booking.listingId || "";
-          let lastMessage = "";
-          let lastMessageAt = "";
-          let unread = false;
+      const items: ThreadItem[] = (data.threads || []).map((thread: any) => ({
+        id: `${thread.otherUserId}_${thread.listingId}`,
+        otherUserId: thread.otherUserId,
+        listingId: thread.listingId,
+        bookingId: "",
+        title: thread.otherUserName || "Guest",
+        subtitle: thread.listingTitle || "Listing",
+        lastMessage: thread.lastMessage?.content || "",
+        lastMessageAt: thread.lastMessage?.createdAt || "",
+        unread: Boolean(thread.unreadCount && thread.unreadCount > 0),
+      }));
 
-          if (otherUserId && listingId) {
-            const messagesRes = await fetch(
-              `/api/messages/${otherUserId}/${listingId}`,
-              { credentials: "include" },
-            );
-            const messagesData = await messagesRes.json();
-            const list = Array.isArray(messagesData?.data)
-              ? messagesData.data
-              : [];
-            const latest = list[list.length - 1];
-            lastMessage = latest?.content || "";
-            lastMessageAt = latest?.createdAt || "";
-            unread = Boolean(
-              latest &&
-              latest.receiver === user?.id &&
-              latest.read === false,
-            );
-          }
-
-          return {
-            id: `${otherUserId}_${listingId}_${booking._id || ""}`,
-            otherUserId,
-            listingId,
-            bookingId: booking._id || "",
-            title: customer.fullName || "Guest",
-            subtitle: listing.title || "Listing",
-            lastMessage,
-            lastMessageAt,
-            unread,
-          } as ThreadItem;
-        }),
-      );
-      setThreads(items);
+      setThreads((prev) => (append ? [...prev, ...items] : items));
+      setThreadsCursor(data.nextCursor || null);
+      setThreadsHasMore(Boolean(data.nextCursor));
     } catch (error) {
       console.error("Error fetching threads:", error);
-      setThreads([]);
+      if (!append) setThreads([]);
     } finally {
-      setThreadsLoading(false);
+      if (append) {
+        setThreadsLoadingMore(false);
+      } else {
+        setThreadsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     if (!ready) return;
     fetchThreads();
-  }, [ready, threadsPage]);
+  }, [ready]);
 
   useEffect(() => {
     const hasQuery =
@@ -183,6 +189,22 @@ export default function HostMessagesPage() {
       bookingId: threads[0].bookingId,
     });
   }, [threads, selected.otherUserId, selected.listingId, searchParams]);
+
+  useEffect(() => {
+    if (!selected.otherUserId || !selected.listingId) return;
+    void markThreadRead({
+      otherUserId: selected.otherUserId,
+      listingId: selected.listingId,
+    });
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.otherUserId === selected.otherUserId &&
+          thread.listingId === selected.listingId
+          ? { ...thread, unread: false }
+          : thread,
+      ),
+    );
+  }, [selected.otherUserId, selected.listingId]);
 
   const fetchMessages = async (otherUserId: string, listingId: string) => {
     setLoadingMessages(true);
@@ -296,7 +318,10 @@ export default function HostMessagesPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {thread.unread && (
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            New
+                          </span>
                         )}
                         <span className="text-[11px] text-gray-400 whitespace-nowrap">
                           {formatTimestamp(thread.lastMessageAt)}
@@ -311,13 +336,15 @@ export default function HostMessagesPage() {
               })}
             </div>
           )}
-          {threads.length < totalThreads && !threadsLoading && (
+          {threadsHasMore && !threadsLoading && (
             <button
               type="button"
-              onClick={() => setThreadsPage((page) => page + 1)}
+              onClick={() =>
+                fetchThreads({ cursor: threadsCursor, append: true })
+              }
               className="mt-4 w-full px-4 py-2 text-sm font-semibold text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50"
             >
-              Load more
+              {threadsLoadingMore ? "Loading..." : "Load more"}
             </button>
           )}
         </div>
