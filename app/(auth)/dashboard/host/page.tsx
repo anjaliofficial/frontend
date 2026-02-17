@@ -92,11 +92,19 @@ export default function HostDashboard() {
     return (
         <div className="max-w-7xl mx-auto">
             {/* Welcome Header */}
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                    Welcome back, {user.fullName || "Host"}! 👋
-                </h1>
-                <p className="text-gray-600 text-lg">Manage your properties and grow your business</p>
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                        Welcome back, {user.fullName || "Host"}! 👋
+                    </h1>
+                    <p className="text-gray-600 text-lg">Manage your properties and grow your business</p>
+                </div>
+                <Link
+                    href="/dashboard/host/messages"
+                    className="inline-flex items-center justify-center px-4 py-3 rounded-lg border border-blue-200 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow-sm"
+                >
+                    Open Chat
+                </Link>
             </div>
 
             {/* Stats Overview */}

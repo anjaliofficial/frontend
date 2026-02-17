@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
 
@@ -104,9 +105,17 @@ export default function HostBookingsPage() {
     return (
         <>
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">Bookings Management 📋</h1>
-                <p className="text-gray-600 text-lg">View and manage reservations for your properties</p>
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-4xl font-bold text-gray-900 mb-2">Bookings Management 📋</h1>
+                    <p className="text-gray-600 text-lg">View and manage reservations for your properties</p>
+                </div>
+                <Link
+                    href="/dashboard/host/messages"
+                    className="inline-flex items-center justify-center px-4 py-3 rounded-lg border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 font-semibold shadow-sm"
+                >
+                    Open Chat
+                </Link>
             </div>
 
             {/* Stats Cards */}

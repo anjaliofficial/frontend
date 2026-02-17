@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import { getDashboardPath } from "@/lib/auth/roles";
 
@@ -61,17 +62,25 @@ export default function HostListingsPage() {
 
     return (
         <div className="max-w-7xl mx-auto p-6">
-            <div className="mb-8 flex justify-between items-center">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">My Listings</h1>
                     <p className="text-gray-600 text-lg">Manage your properties</p>
                 </div>
-                <a
-                    href="/dashboard/host/listings/create"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 font-semibold shadow-lg"
-                >
-                    + Create Listing
-                </a>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/dashboard/host/messages"
+                        className="px-4 py-3 rounded-lg border border-blue-200 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow-sm"
+                    >
+                        Open Chat
+                    </Link>
+                    <a
+                        href="/dashboard/host/listings/create"
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 font-semibold shadow-lg"
+                    >
+                        + Create Listing
+                    </a>
+                </div>
             </div>
 
             {listingLoading ? (
