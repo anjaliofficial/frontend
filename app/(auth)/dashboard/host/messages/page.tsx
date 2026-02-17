@@ -11,6 +11,7 @@ interface Message {
   receiver: string;
   content: string;
   createdAt: string;
+  read?: boolean;
 }
 
 interface ThreadItem {
@@ -20,6 +21,9 @@ interface ThreadItem {
   bookingId: string;
   title: string;
   subtitle: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unread: boolean;
 }
 
 export default function HostMessagesPage() {
@@ -37,6 +41,9 @@ export default function HostMessagesPage() {
   const [draft, setDraft] = useState("");
   const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
+  const [threadsPage, setThreadsPage] = useState(1);
+  const [totalThreads, setTotalThreads] = useState(0);
+  const threadPageSize = 6;
 
   useEffect(() => {
     if (loading) return;
@@ -67,6 +74,31 @@ export default function HostMessagesPage() {
     setSelected({ otherUserId, listingId, bookingId });
   }, [ready, searchParams]);
 
+  const setSelectedThread = (thread: {
+    otherUserId: string;
+    listingId: string;
+    bookingId: string;
+  }) => {
+    setSelected(thread);
+    const params = new URLSearchParams();
+    if (thread.otherUserId) params.set("customerId", thread.otherUserId);
+    if (thread.listingId) params.set("listingId", thread.listingId);
+    if (thread.bookingId) params.set("bookingId", thread.bookingId);
+    const query = params.toString();
+    router.replace(query ? `/dashboard/host/messages?${query}` : "/dashboard/host/messages");
+  };
+
+  const formatPreview = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return "No messages yet";
+    return trimmed.length > 60 ? `${trimmed.slice(0, 60)}...` : trimmed;
+  };
+
+  const formatTimestamp = (value: string) => {
+    if (!value) return "";
+    return new Date(value).toLocaleString();
+  };
+
   const fetchThreads = async () => {
     setThreadsLoading(true);
     try {
@@ -77,20 +109,52 @@ export default function HostMessagesPage() {
       if (!res.ok) {
         throw new Error(data?.message || "Failed to load threads");
       }
-      const items: ThreadItem[] = (data.bookings || []).map((booking: any) => {
-        const customer = booking.customerId || {};
-        const listing = booking.listingId || {};
-        const otherUserId = customer._id || booking.customerId || "";
-        const listingId = listing._id || booking.listingId || "";
-        return {
-          id: `${otherUserId}_${listingId}`,
-          otherUserId,
-          listingId,
-          bookingId: booking._id || "",
-          title: customer.fullName || "Guest",
-          subtitle: listing.title || "Listing",
-        };
-      });
+      const bookings = data.bookings || [];
+      setTotalThreads(bookings.length);
+      const pagedBookings = bookings.slice(0, threadPageSize * threadsPage);
+
+      const items = await Promise.all(
+        pagedBookings.map(async (booking: any) => {
+          const customer = booking.customerId || {};
+          const listing = booking.listingId || {};
+          const otherUserId = customer._id || booking.customerId || "";
+          const listingId = listing._id || booking.listingId || "";
+          let lastMessage = "";
+          let lastMessageAt = "";
+          let unread = false;
+
+          if (otherUserId && listingId) {
+            const messagesRes = await fetch(
+              `/api/messages/${otherUserId}/${listingId}`,
+              { credentials: "include" },
+            );
+            const messagesData = await messagesRes.json();
+            const list = Array.isArray(messagesData?.data)
+              ? messagesData.data
+              : [];
+            const latest = list[list.length - 1];
+            lastMessage = latest?.content || "";
+            lastMessageAt = latest?.createdAt || "";
+            unread = Boolean(
+              latest &&
+              latest.receiver === user?.id &&
+              latest.read === false,
+            );
+          }
+
+          return {
+            id: `${otherUserId}_${listingId}_${booking._id || ""}`,
+            otherUserId,
+            listingId,
+            bookingId: booking._id || "",
+            title: customer.fullName || "Guest",
+            subtitle: listing.title || "Listing",
+            lastMessage,
+            lastMessageAt,
+            unread,
+          } as ThreadItem;
+        }),
+      );
       setThreads(items);
     } catch (error) {
       console.error("Error fetching threads:", error);
@@ -103,17 +167,22 @@ export default function HostMessagesPage() {
   useEffect(() => {
     if (!ready) return;
     fetchThreads();
-  }, [ready]);
+  }, [ready, threadsPage]);
 
   useEffect(() => {
+    const hasQuery =
+      searchParams.get("customerId") ||
+      searchParams.get("otherUserId") ||
+      searchParams.get("listingId");
+    if (hasQuery) return;
     if (selected.otherUserId || selected.listingId) return;
     if (threads.length === 0) return;
-    setSelected({
+    setSelectedThread({
       otherUserId: threads[0].otherUserId,
       listingId: threads[0].listingId,
       bookingId: threads[0].bookingId,
     });
-  }, [threads, selected.otherUserId, selected.listingId]);
+  }, [threads, selected.otherUserId, selected.listingId, searchParams]);
 
   const fetchMessages = async (otherUserId: string, listingId: string) => {
     setLoadingMessages(true);
@@ -165,6 +234,7 @@ export default function HostMessagesPage() {
 
       setDraft("");
       fetchMessages(selected.otherUserId, selected.listingId);
+      fetchThreads();
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -208,7 +278,7 @@ export default function HostMessagesPage() {
                     key={thread.id}
                     type="button"
                     onClick={() =>
-                      setSelected({
+                      setSelectedThread({
                         otherUserId: thread.otherUserId,
                         listingId: thread.listingId,
                         bookingId: thread.bookingId,
@@ -219,12 +289,36 @@ export default function HostMessagesPage() {
                       : "border-gray-200 hover:bg-gray-50"
                       }`}
                   >
-                    <p className="text-sm font-semibold text-gray-900">{thread.title}</p>
-                    <p className="text-xs text-gray-500">{thread.subtitle}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{thread.title}</p>
+                        <p className="text-xs text-gray-500 truncate">{thread.subtitle}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {thread.unread && (
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        )}
+                        <span className="text-[11px] text-gray-400 whitespace-nowrap">
+                          {formatTimestamp(thread.lastMessageAt)}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2 truncate">
+                      {formatPreview(thread.lastMessage)}
+                    </p>
                   </button>
                 );
               })}
             </div>
+          )}
+          {threads.length < totalThreads && !threadsLoading && (
+            <button
+              type="button"
+              onClick={() => setThreadsPage((page) => page + 1)}
+              className="mt-4 w-full px-4 py-2 text-sm font-semibold text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50"
+            >
+              Load more
+            </button>
           )}
         </div>
 
