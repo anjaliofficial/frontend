@@ -1,10 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 
 interface DeleteConfirmModalProps {
     isOpen: boolean;
-    isDeleting: boolean;
     onClose: () => void;
     onDeleteForMe: () => Promise<void>;
     onDeleteForEveryone: () => Promise<void>;
@@ -12,28 +11,47 @@ interface DeleteConfirmModalProps {
 
 export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
     isOpen,
-    isDeleting,
     onClose,
     onDeleteForMe,
     onDeleteForEveryone,
 }) => {
+    const [deletingType, setDeletingType] = useState<"for_me" | "for_everyone" | null>(null);
+
     if (!isOpen) return null;
 
     const handleDeleteForMe = async () => {
+        setDeletingType("for_me");
         try {
             await onDeleteForMe();
+            console.log("Delete for me completed successfully");
+            // Auto-close after success
+            setTimeout(() => {
+                onClose();
+                setDeletingType(null);
+            }, 600);
         } catch (err: any) {
             console.error("Delete for me error:", err);
+            setDeletingType(null);
         }
     };
 
     const handleDeleteForEveryone = async () => {
+        setDeletingType("for_everyone");
         try {
             await onDeleteForEveryone();
+            console.log("Delete for everyone completed successfully");
+            // Auto-close after success
+            setTimeout(() => {
+                onClose();
+                setDeletingType(null);
+            }, 600);
         } catch (err: any) {
             console.error("Delete for everyone error:", err);
+            setDeletingType(null);
         }
     };
+
+    const isDeleting = deletingType !== null;
 
     return (
         <>
@@ -66,7 +84,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                             disabled={isDeleting}
                             className="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
                         >
-                            {isDeleting && (
+                            {deletingType === "for_everyone" && (
                                 <span className="animate-spin text-lg">⏳</span>
                             )}
                             <span>Delete for everyone</span>
@@ -78,7 +96,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                             disabled={isDeleting}
                             className="w-full px-4 py-3 bg-teal-700 hover:bg-teal-800 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
                         >
-                            {isDeleting && (
+                            {deletingType === "for_me" && (
                                 <span className="animate-spin text-lg">⏳</span>
                             )}
                             <span>Delete for me</span>

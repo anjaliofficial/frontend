@@ -69,7 +69,6 @@ export default function CustomerMessagesPage() {
     const [deleteConfirm, setDeleteConfirm] = useState({
         isOpen: false,
         messageId: "",
-        isDeleting: false,
     });
 
     const socket = getSocket();
@@ -165,11 +164,14 @@ export default function CustomerMessagesPage() {
         });
 
         newSocket?.on("messageDeleted", (data: any) => {
+            console.log("messageDeleted event received:", data);
             if (data.deleteType === "for_me") {
+                console.log("Removing message locally:", data.messageId);
                 setMessages((prev) =>
                     prev.filter((msg) => msg._id !== data.messageId),
                 );
             } else if (data.deleteType === "for_everyone") {
+                console.log("Marking message as deleted:", data.messageId);
                 setMessages((prev) =>
                     prev.map((msg) =>
                         msg._id === data.messageId
@@ -414,38 +416,42 @@ export default function CustomerMessagesPage() {
     }, [contextMenu.messageId, messages]);
 
     // Delete handlers
-    const handleDeleteForMe = async () => {
-        console.log("Delete for me clicked");
-        setDeleteConfirm((prev) => ({ ...prev, isDeleting: true }));
-        try {
-            console.log("Emitting delete message event:", contextMenu.messageId);
-            emitDeleteMessage(contextMenu.messageId, "for_me");
-            // Give a short delay to show loading state
-            setTimeout(() => {
-                setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false });
-                setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-            }, 500);
-        } catch (err) {
-            setDeleteConfirm((prev) => ({ ...prev, isDeleting: false }));
-            console.error("Error deleting message:", err);
-        }
+    const handleDeleteForMe = async (): Promise<void> => {
+        console.log("Delete for me clicked, messageId:", deleteConfirm.messageId);
+        return new Promise<void>((resolve, reject) => {
+            try {
+                console.log("Emitting delete message event with type: for_me");
+                emitDeleteMessage(deleteConfirm.messageId, "for_me");
+                // Wait for socket event to be processed
+                setTimeout(() => {
+                    console.log("Closing modal after for_me deletion");
+                    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+                    resolve();
+                }, 1000);
+            } catch (err) {
+                console.error("Error deleting message:", err);
+                reject(err);
+            }
+        });
     };
 
-    const handleDeleteForEveryone = async () => {
-        console.log("Delete for everyone clicked");
-        setDeleteConfirm((prev) => ({ ...prev, isDeleting: true }));
-        try {
-            console.log("Emitting delete for everyone event:", contextMenu.messageId);
-            emitDeleteMessage(contextMenu.messageId, "for_everyone");
-            // Give a short delay to show loading state
-            setTimeout(() => {
-                setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false });
-                setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-            }, 500);
-        } catch (err) {
-            setDeleteConfirm((prev) => ({ ...prev, isDeleting: false }));
-            console.error("Error deleting message:", err);
-        }
+    const handleDeleteForEveryone = async (): Promise<void> => {
+        console.log("Delete for everyone clicked, messageId:", deleteConfirm.messageId);
+        return new Promise<void>((resolve, reject) => {
+            try {
+                console.log("Emitting delete message event with type: for_everyone");
+                emitDeleteMessage(deleteConfirm.messageId, "for_everyone");
+                // Wait for socket event to be processed
+                setTimeout(() => {
+                    console.log("Closing modal after for_everyone deletion");
+                    setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+                    resolve();
+                }, 1000);
+            } catch (err) {
+                console.error("Error deleting message:", err);
+                reject(err);
+            }
+        });
     };
 
     // Placeholder handlers for other menu options
@@ -760,7 +766,7 @@ export default function CustomerMessagesPage() {
                 }}
                 onDelete={() => {
                     console.log("Delete option clicked from context menu");
-                    setDeleteConfirm({ isOpen: true, messageId: contextMenu.messageId, isDeleting: false });
+                    setDeleteConfirm({ isOpen: true, messageId: contextMenu.messageId });
                     setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
                 }}
                 onSelect={handleSelect}
@@ -769,8 +775,7 @@ export default function CustomerMessagesPage() {
             {/* Delete Confirmation Modal */}
             <DeleteConfirmModal
                 isOpen={deleteConfirm.isOpen}
-                isDeleting={deleteConfirm.isDeleting}
-                onClose={() => setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false })}
+                onClose={() => setDeleteConfirm({ isOpen: false, messageId: "" })}
                 onDeleteForMe={handleDeleteForMe}
                 onDeleteForEveryone={handleDeleteForEveryone}
             />

@@ -71,13 +71,24 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     let adjustedY = y;
     const menuWidth = 200;
     const menuHeight = isOwnMessage ? 320 : 240;
+    const padding = 10;
 
-    if (adjustedX + menuWidth > window.innerWidth) {
-        adjustedX = window.innerWidth - menuWidth - 10;
+    // Adjust X: if menu goes off right side, move it left
+    if (adjustedX + menuWidth + padding > window.innerWidth) {
+        adjustedX = window.innerWidth - menuWidth - padding;
+    }
+    // Don't let it go too far left either
+    if (adjustedX < padding) {
+        adjustedX = padding;
     }
 
-    if (adjustedY + menuHeight > window.innerHeight) {
-        adjustedY = window.innerHeight - menuHeight - 10;
+    // Adjust Y: if menu goes off bottom, move it up
+    if (adjustedY + menuHeight + padding > window.innerHeight) {
+        adjustedY = adjustedY - menuHeight - 10; // Show above the click point instead
+    }
+    // Don't let it go too high
+    if (adjustedY < padding) {
+        adjustedY = padding;
     }
 
     const menuItems = [

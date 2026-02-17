@@ -71,7 +71,6 @@ export default function HostMessagesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState({
     isOpen: false,
     messageId: "",
-    isDeleting: false,
   });
 
   useEffect(() => {
@@ -373,7 +372,11 @@ export default function HostMessagesPage() {
     try {
       const res = await fetch(`/api/messages/message/${messageId}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
+        body: JSON.stringify({ deleteType: "for_everyone" }),
       });
 
       const data = await res.json();
@@ -423,14 +426,17 @@ export default function HostMessagesPage() {
   };
 
   // Delete Handlers
-  const handleDeleteForMe = async () => {
+  const handleDeleteForMe = async (): Promise<void> => {
     console.log("Delete for me clicked");
-    setDeleteConfirm((prev) => ({ ...prev, isDeleting: true }));
     try {
-      console.log("Deleting message for me:", contextMenu.messageId);
-      const res = await fetch(`/api/messages/message/${contextMenu.messageId}`, {
+      console.log("Deleting message for me:", deleteConfirm.messageId);
+      const res = await fetch(`/api/messages/message/${deleteConfirm.messageId}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
+        body: JSON.stringify({ deleteType: "for_me" }),
       });
 
       const data = await res.json();
@@ -438,27 +444,28 @@ export default function HostMessagesPage() {
         throw new Error(data?.message || "Failed to delete message");
       }
 
+      console.log("Message deleted for me successfully");
       setMessages((prev) =>
-        prev.filter((msg) => msg._id !== contextMenu.messageId)
+        prev.filter((msg) => msg._id !== deleteConfirm.messageId)
       );
-      setTimeout(() => {
-        setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false });
-        setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-      }, 500);
+      setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
     } catch (err) {
-      setDeleteConfirm((prev) => ({ ...prev, isDeleting: false }));
       console.error("Error deleting message:", err);
+      throw err;
     }
   };
 
-  const handleDeleteForEveryone = async () => {
+  const handleDeleteForEveryone = async (): Promise<void> => {
     console.log("Delete for everyone clicked");
-    setDeleteConfirm((prev) => ({ ...prev, isDeleting: true }));
     try {
-      console.log("Deleting message for everyone:", contextMenu.messageId);
-      const res = await fetch(`/api/messages/message/${contextMenu.messageId}`, {
+      console.log("Deleting message for everyone:", deleteConfirm.messageId);
+      const res = await fetch(`/api/messages/message/${deleteConfirm.messageId}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
+        body: JSON.stringify({ deleteType: "for_everyone" }),
       });
 
       const data = await res.json();
@@ -466,20 +473,18 @@ export default function HostMessagesPage() {
         throw new Error(data?.message || "Failed to delete message");
       }
 
+      console.log("Message deleted for everyone successfully");
       setMessages((prev) =>
         prev.map((msg) =>
-          msg._id === contextMenu.messageId
+          msg._id === deleteConfirm.messageId
             ? { ...msg, content: "This message has been deleted", isDeleted: true, deletedBy: user?.id || "" }
             : msg
         )
       );
-      setTimeout(() => {
-        setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false });
-        setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
-      }, 500);
+      setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
     } catch (err) {
-      setDeleteConfirm((prev) => ({ ...prev, isDeleting: false }));
       console.error("Error deleting message:", err);
+      throw err;
     }
   };
 
@@ -505,7 +510,11 @@ export default function HostMessagesPage() {
 
   const handleEdit = () => {
     console.log("Edit clicked");
-    setEditingMessageId(contextMenu.messageId);
+    const messageToEdit = messages.find((msg) => msg._id === contextMenu.messageId);
+    if (messageToEdit) {
+      setEditingMessageId(contextMenu.messageId);
+      setEditContent(messageToEdit.content);
+    }
     setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
   };
 
@@ -777,12 +786,16 @@ export default function HostMessagesPage() {
             onPin={handlePin}
             onStar={handleStar}
             onEdit={() => {
-              handleEdit();
+              const messageToEdit = messages.find((msg) => msg._id === contextMenu.messageId);
+              if (messageToEdit) {
+                setEditingMessageId(contextMenu.messageId);
+                setEditContent(messageToEdit.content);
+              }
               setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
             }}
             onDelete={() => {
               console.log("Delete option clicked from context menu");
-              setDeleteConfirm({ isOpen: true, messageId: contextMenu.messageId, isDeleting: false });
+              setDeleteConfirm({ isOpen: true, messageId: contextMenu.messageId });
               setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
             }}
             onSelect={handleSelect}
@@ -791,8 +804,7 @@ export default function HostMessagesPage() {
           {/* Delete Confirmation Modal */}
           <DeleteConfirmModal
             isOpen={deleteConfirm.isOpen}
-            isDeleting={deleteConfirm.isDeleting}
-            onClose={() => setDeleteConfirm({ isOpen: false, messageId: "", isDeleting: false })}
+            onClose={() => setDeleteConfirm({ isOpen: false, messageId: "" })}
             onDeleteForMe={handleDeleteForMe}
             onDeleteForEveryone={handleDeleteForEveryone}
           />

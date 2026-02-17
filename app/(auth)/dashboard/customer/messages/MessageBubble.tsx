@@ -38,7 +38,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     }, []);
 
     // Render deleted message
-    if (isDeletedForEveryone && message.deleteType === "for_everyone") {
+    if (isDeletedForEveryone) {
         return (
             <div
                 className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-2`}
@@ -88,7 +88,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                             }`}
                     >
                         <span>{messageTime}</span>
-                        {isEdited && <span className="italic">edited</span>}
+                        {message.isEdited && <span className="italic">edited</span>}
                         {statusIcon}
                     </div>
                 </div>

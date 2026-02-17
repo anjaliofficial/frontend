@@ -19,7 +19,10 @@ export async function PUT(
 
   try {
     const body = await req.json();
-    const res = await fetch(`${API_BASE}/api/messages/${messageId}`, {
+    const backendUrl = `${API_BASE}/api/messages/${messageId}`;
+    console.log("Calling backend PUT:", backendUrl, "with body:", body);
+
+    const res = await fetch(backendUrl, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -28,20 +31,56 @@ export async function PUT(
       body: JSON.stringify(body),
     });
 
-    const data = await res.json();
+    console.log("Backend response status:", res.status);
+    const contentType = res.headers.get("content-type");
+    console.log("Backend response content-type:", contentType);
 
+    // Check status first
     if (!res.ok) {
+      let errorData: any;
+      if (contentType?.includes("application/json")) {
+        errorData = await res.json();
+      } else {
+        const text = await res.text();
+        console.error(
+          "Non-JSON error response from backend:",
+          text.substring(0, 200),
+        );
+        return NextResponse.json(
+          {
+            message: "Server error: Invalid response from backend",
+            details: `Expected JSON but got ${contentType || "unknown content-type"}`,
+          },
+          { status: res.status || 500 },
+        );
+      }
       return NextResponse.json(
-        { message: data.message || "Failed to edit message" },
+        { message: errorData.message || "Failed to edit message" },
         { status: res.status },
       );
     }
 
+    // Only try to parse as JSON if content-type indicates JSON
+    if (!contentType?.includes("application/json")) {
+      const text = await res.text();
+      console.error(
+        "Unexpected content-type from backend:",
+        contentType,
+        "body:",
+        text.substring(0, 200),
+      );
+      return NextResponse.json(
+        { message: "Invalid response from server" },
+        { status: 500 },
+      );
+    }
+
+    const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Error editing message:", error);
+    console.error("Error in PUT route:", error);
     return NextResponse.json(
-      { message: "Failed to edit message" },
+      { message: "Failed to edit message", error: String(error) },
       { status: 500 },
     );
   }
@@ -59,28 +98,76 @@ export async function DELETE(
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/messages/${messageId}`, {
+    let body = {};
+    try {
+      body = await req.json();
+    } catch (e) {
+      // Body might be empty, that's okay
+      body = {};
+    }
+
+    const backendUrl = `${API_BASE}/api/messages/${messageId}`;
+    console.log("Calling backend DELETE:", backendUrl, "with body:", body);
+
+    const res = await fetch(backendUrl, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
+      body: JSON.stringify(body),
     });
 
-    const data = await res.json();
+    console.log("Backend response status:", res.status);
+    const contentType = res.headers.get("content-type");
+    console.log("Backend response content-type:", contentType);
 
+    // Check status first
     if (!res.ok) {
+      let errorData: any;
+      if (contentType?.includes("application/json")) {
+        errorData = await res.json();
+      } else {
+        const text = await res.text();
+        console.error(
+          "Non-JSON error response from backend:",
+          text.substring(0, 200),
+        );
+        return NextResponse.json(
+          {
+            message: "Server error: Invalid response from backend",
+            details: `Expected JSON but got ${contentType || "unknown content-type"}`,
+          },
+          { status: res.status || 500 },
+        );
+      }
       return NextResponse.json(
-        { message: data.message || "Failed to delete message" },
+        { message: errorData.message || "Failed to delete message" },
         { status: res.status },
       );
     }
 
+    // Only try to parse as JSON if content-type indicates JSON
+    if (!contentType?.includes("application/json")) {
+      const text = await res.text();
+      console.error(
+        "Unexpected content-type from backend:",
+        contentType,
+        "body:",
+        text.substring(0, 200),
+      );
+      return NextResponse.json(
+        { message: "Invalid response from server" },
+        { status: 500 },
+      );
+    }
+
+    const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Error deleting message:", error);
+    console.error("Error in DELETE route:", error);
     return NextResponse.json(
-      { message: "Failed to delete message" },
+      { message: "Failed to delete message", error: String(error) },
       { status: 500 },
     );
   }
