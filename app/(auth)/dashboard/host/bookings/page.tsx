@@ -81,6 +81,16 @@ export default function HostBookingsPage() {
         }
     };
 
+    const getChatUrl = (booking: any) => {
+        const customerId = booking.customerId?._id || booking.customerId;
+        const params = new URLSearchParams();
+        if (customerId) params.set("customerId", customerId);
+        if (booking._id) params.set("bookingId", booking._id);
+        if (booking.listingId?._id) params.set("listingId", booking.listingId._id);
+        const query = params.toString();
+        return query ? `/dashboard/host/messages?${query}` : "/dashboard/host/messages";
+    };
+
     const rejectBooking = async (bookingId: string) => {
         try {
             await fetch(`/api/bookings/host/${bookingId}/reject`, {
@@ -186,22 +196,30 @@ export default function HostBookingsPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm">
-                                            {booking.status === "pending" && (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => acceptBooking(booking._id)}
-                                                        className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition text-xs"
-                                                    >
-                                                        Accept
-                                                    </button>
-                                                    <button
-                                                        onClick={() => rejectBooking(booking._id)}
-                                                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs"
-                                                    >
-                                                        Reject
-                                                    </button>
-                                                </div>
-                                            )}
+                                            <div className="flex flex-wrap gap-2">
+                                                <Link
+                                                    href={getChatUrl(booking)}
+                                                    className="px-3 py-1 border border-emerald-200 text-emerald-700 rounded hover:bg-emerald-50 transition text-xs"
+                                                >
+                                                    Chat
+                                                </Link>
+                                                {booking.status === "pending" && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => acceptBooking(booking._id)}
+                                                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition text-xs"
+                                                        >
+                                                            Accept
+                                                        </button>
+                                                        <button
+                                                            onClick={() => rejectBooking(booking._id)}
+                                                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs"
+                                                        >
+                                                            Reject
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

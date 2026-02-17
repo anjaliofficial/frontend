@@ -55,6 +55,15 @@ export default function HostLayout({
             ),
         },
         {
+            name: "Messages",
+            href: "/dashboard/host/messages",
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h8m-8 4h5m9 0a2 2 0 01-2 2H7l-4 4V6a2 2 0 012-2h14a2 2 0 012 2v8z" />
+                </svg>
+            ),
+        },
+        {
             name: "Reviews",
             href: "/dashboard/host/reviews",
             icon: (
