@@ -46,6 +46,15 @@ export default function CustomerLayout({
             ),
         },
         {
+            name: "Messages",
+            href: "/dashboard/customer/messages",
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h8m-8 4h5m9 0a2 2 0 01-2 2H7l-4 4V6a2 2 0 012-2h14a2 2 0 012 2v8z" />
+                </svg>
+            ),
+        },
+        {
             name: "Profile",
             href: "/dashboard/customer/profile",
             icon: (

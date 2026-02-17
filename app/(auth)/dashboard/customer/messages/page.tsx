@@ -13,6 +13,15 @@ interface Message {
     createdAt: string;
 }
 
+interface ThreadItem {
+    id: string;
+    otherUserId: string;
+    listingId: string;
+    bookingId: string;
+    title: string;
+    subtitle: string;
+}
+
 export default function CustomerMessagesPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
@@ -26,6 +35,8 @@ export default function CustomerMessagesPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [draft, setDraft] = useState("");
+    const [threads, setThreads] = useState<ThreadItem[]>([]);
+    const [threadsLoading, setThreadsLoading] = useState(false);
 
     useEffect(() => {
         if (loading) return;
@@ -53,6 +64,54 @@ export default function CustomerMessagesPage() {
 
         setSelected({ otherUserId, listingId, bookingId });
     }, [ready, searchParams]);
+
+    const fetchThreads = async () => {
+        setThreadsLoading(true);
+        try {
+            const res = await fetch("/api/bookings/customer/my", {
+                credentials: "include",
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data?.message || "Failed to load threads");
+            }
+            const items: ThreadItem[] = (data.bookings || []).map((booking: any) => {
+                const host = booking.hostId || {};
+                const listing = booking.listingId || {};
+                const otherUserId = host._id || booking.hostId || "";
+                const listingId = listing._id || booking.listingId || "";
+                return {
+                    id: `${otherUserId}_${listingId}`,
+                    otherUserId,
+                    listingId,
+                    bookingId: booking._id || "",
+                    title: host.fullName || "Host",
+                    subtitle: listing.title || "Listing",
+                };
+            });
+            setThreads(items);
+        } catch (error) {
+            console.error("Error fetching threads:", error);
+            setThreads([]);
+        } finally {
+            setThreadsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!ready) return;
+        fetchThreads();
+    }, [ready]);
+
+    useEffect(() => {
+        if (selected.otherUserId || selected.listingId) return;
+        if (threads.length === 0) return;
+        setSelected({
+            otherUserId: threads[0].otherUserId,
+            listingId: threads[0].listingId,
+            bookingId: threads[0].bookingId,
+        });
+    }, [threads, selected.otherUserId, selected.listingId]);
 
     const fetchMessages = async (otherUserId: string, listingId: string) => {
         setLoadingMessages(true);
@@ -129,19 +188,41 @@ export default function CustomerMessagesPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Selected Host</h2>
-                    {selected.otherUserId ? (
-                        <div className="space-y-2 text-sm text-gray-700">
-                            <p><span className="font-semibold text-gray-900">Host ID:</span> {selected.otherUserId}</p>
-                            {selected.listingId && (
-                                <p><span className="font-semibold text-gray-900">Listing ID:</span> {selected.listingId}</p>
-                            )}
-                            {selected.bookingId && (
-                                <p><span className="font-semibold text-gray-900">Booking ID:</span> {selected.bookingId}</p>
-                            )}
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Conversations</h2>
+                    {threadsLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                         </div>
+                    ) : threads.length === 0 ? (
+                        <p className="text-gray-500">No conversations yet.</p>
                     ) : (
-                        <p className="text-gray-500">Open a chat from a booking to select a host.</p>
+                        <div className="space-y-2">
+                            {threads.map((thread) => {
+                                const isActive =
+                                    thread.otherUserId === selected.otherUserId &&
+                                    thread.listingId === selected.listingId;
+                                return (
+                                    <button
+                                        key={thread.id}
+                                        type="button"
+                                        onClick={() =>
+                                            setSelected({
+                                                otherUserId: thread.otherUserId,
+                                                listingId: thread.listingId,
+                                                bookingId: thread.bookingId,
+                                            })
+                                        }
+                                        className={`w-full text-left px-4 py-3 rounded-xl border transition ${isActive
+                                            ? "border-blue-500 bg-blue-50"
+                                            : "border-gray-200 hover:bg-gray-50"
+                                            }`}
+                                    >
+                                        <p className="text-sm font-semibold text-gray-900">{thread.title}</p>
+                                        <p className="text-xs text-gray-500">{thread.subtitle}</p>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
 
@@ -166,8 +247,8 @@ export default function CustomerMessagesPage() {
                                     <div
                                         key={message._id}
                                         className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${isOwn
-                                                ? "ml-auto bg-blue-600 text-white"
-                                                : "bg-gray-100 text-gray-800"
+                                            ? "ml-auto bg-blue-600 text-white"
+                                            : "bg-gray-100 text-gray-800"
                                             }`}
                                     >
                                         <p>{message.content}</p>
