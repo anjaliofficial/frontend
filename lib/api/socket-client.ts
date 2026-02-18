@@ -7,9 +7,11 @@ let socket: Socket | null = null;
 
 export const initSocket = (token: string) => {
   if (socket?.connected) {
+    console.log("[Socket] Already connected, reusing socket");
     return socket;
   }
 
+  console.log("[Socket] Initializing socket with API_BASE:", API_BASE);
   socket = io(API_BASE, {
     auth: { token },
     transports: ["websocket"],
@@ -19,15 +21,15 @@ export const initSocket = (token: string) => {
   });
 
   socket.on("connect", () => {
-    console.log("Socket connected");
+    console.log("[Socket] Connected successfully");
   });
 
   socket.on("disconnect", () => {
-    console.log("Socket disconnected");
+    console.log("[Socket] Disconnected");
   });
 
   socket.on("connect_error", (error: any) => {
-    console.error("Socket connection error:", error);
+    console.error("[Socket] Connection error:", error);
   });
 
   return socket;

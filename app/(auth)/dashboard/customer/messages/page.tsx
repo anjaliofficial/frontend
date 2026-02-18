@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
+import axios from "axios";
 import {
   ArrowLeft,
   Send,
@@ -19,6 +20,8 @@ import {
   getSocket,
   initSocket,
   sendMessage,
+  startTyping,
+  stopTyping,
 } from "@/lib/api/socket-client";
 
 // Types
@@ -103,9 +106,9 @@ const normalizeMediaUrl = (url: string): string => {
     return url;
   }
   if (url.startsWith("/uploads/")) {
-    return `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"}${url}`;
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5050"}${url}`;
   }
-  return `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"}/uploads/${url}`;
+  return `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5050"}/uploads/${url}`;
 };
 
 const MessageApp = () => {
@@ -125,6 +128,12 @@ const MessageApp = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [messagesLoadingMore, setMessagesLoadingMore] = useState(false);
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false);
+
+  // Log component mount
+  useEffect(() => {
+    console.log("[COMPONENT] MessageApp mounted");
+    return () => console.log("[COMPONENT] MessageApp unmounted");
+  }, []);
 
   const [threadsCursor, setThreadsCursor] = useState<string | null>(null);
   const [threadsHasMore, setThreadsHasMore] = useState(false);
@@ -150,6 +159,8 @@ const MessageApp = () => {
   }>({ open: false, message: null });
 
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const threadPageSize = 15;
@@ -159,20 +170,20 @@ const MessageApp = () => {
 
   // Load user profile
   useEffect(() => {
+    console.log("[USER] Starting fetchUser...");
     const fetchUser = async () => {
       try {
-        const res = await fetch("/api/auth/me", {
-          credentials: "include",
+        console.log("[USER] Calling /api/auth/me");
+        const response = await axios.get("/api/auth/me", {
+          withCredentials: true,
         });
-        const data = await res.json();
-        if (res.ok) {
-          setUser(data.data);
-        } else {
-          console.error("Failed to load user:", data.message);
-          router.push("/login");
-        }
+        console.log("[USER] Response received:", response.data);
+        // Response is { success: true, user: {...} }
+        const userData = response.data.user || response.data.data || response.data;
+        console.log("[USER] Setting user state:", userData);
+        setUser(userData);
       } catch (error) {
-        console.error("Error loading user:", error);
+        console.error("[USER] Error loading user:", error);
         router.push("/login");
       }
     };
@@ -204,32 +215,60 @@ const MessageApp = () => {
         params.set("cursor", options.cursor);
       }
       params.set("scope", "all");
-      const res = await fetch(`/api/messages/threads?${params.toString()}`, {
-        credentials: "include",
+      const url = `/api/messages/threads?${params.toString()}`;
+      console.log("[fetchThreads] Calling:", url);
+
+      const response = await axios.get(url, {
+        withCredentials: true,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to load threads");
+      const data = response.data;
+      console.log("[fetchThreads] Response status:", response.status);
+      console.log("[fetchThreads] Response data:", JSON.stringify(data, null, 2));
+
+      // Handle both response formats - check if threads exist
+      const threads = data.threads || data.data?.threads || data.data || [];
+      console.log("[fetchThreads] Extracted threads:", threads);
+
+      if (!Array.isArray(threads)) {
+        console.warn("[fetchThreads] Threads is not an array:", threads);
+        if (!append) setThreads([]);
+        return;
       }
 
-      const items = (data.threads || []).map((thread: any) => ({
-        id: `${thread.otherUserId}_${thread.listingId}`,
-        otherUserId: thread.otherUserId,
-        listingId: thread.listingId || "all",
-        title: thread.otherUserName || "Host",
-        lastMessage: thread.lastMessage?.type === "media"
-          ? (thread.lastMessage?.media && thread.lastMessage.media.length > 0 ? "Attachment" : thread.lastMessage?.content || "")
-          : (thread.lastMessage?.content || ""),
-        lastMessageAt: thread.lastMessage?.createdAt || "",
-        unread: Boolean(thread.unreadCount && thread.unreadCount > 0),
-      }));
+      const items = threads.map((thread: any) => {
+        console.log("[fetchThreads] Processing thread:", thread);
+        const mapped = {
+          id: `${String(thread.otherUserId)}_${String(thread.listingId)}`,
+          otherUserId: String(thread.otherUserId),
+          listingId: thread.listingId ? String(thread.listingId) : "all",
+          title: thread.otherUserName || "Host",
+          lastMessage: thread.lastMessage?.type === "media"
+            ? (thread.lastMessage?.media && thread.lastMessage.media.length > 0 ? "Attachment" : thread.lastMessage?.content || "")
+            : (thread.lastMessage?.content || ""),
+          lastMessageAt: thread.lastMessage?.createdAt || "",
+          unread: Boolean(thread.unreadCount && thread.unreadCount > 0),
+        };
+        console.log("[fetchThreads] Mapped thread:", mapped);
+        return mapped;
+      });
 
-      setThreads((prev) => (append ? [...prev, ...items] : items));
+      console.log("[fetchThreads] Mapped items:", items.length, items);
+      setThreads((prev) => {
+        const result = append ? [...prev, ...items] : items;
+        console.log("[fetchThreads] Updated threads count:", result.length);
+        return result;
+      });
       setThreadsCursor(data.nextCursor || null);
       setThreadsHasMore(Boolean(data.nextCursor));
-    } catch (error) {
+      console.log("[fetchThreads] Done setting state");
+    } catch (error: any) {
       console.error("Error fetching threads:", error);
-      if (!append) setThreads([]);
+      if (!append) {
+        setThreads([]);
+        if (!(error?.message || "").includes("Failed to load conversations")) {
+          console.error("[fetchThreads] Detailed error:", error);
+        }
+      }
     } finally {
       if (append) {
         setThreadsLoadingMore(false);
@@ -251,22 +290,38 @@ const MessageApp = () => {
       searchParams.get("hostId") ||
       searchParams.get("otherUserId") ||
       searchParams.get("listingId");
-    if (hasQuery) return;
-    if (selected.otherUserId || selected.listingId !== "") return;
-    if (threads.length === 0) return;
+    if (hasQuery) {
+      console.log("[AUTO-SELECT] Has query params, skipping auto-select");
+      return;
+    }
 
+    const hasSelectedThread = selected.otherUserId && selected.listingId;
+    if (hasSelectedThread) {
+      console.log("[AUTO-SELECT] Already have selected thread:", selected);
+      return;
+    }
+    if (threads.length === 0) {
+      console.log("[AUTO-SELECT] No threads available yet");
+      return;
+    }
+
+    console.log("[AUTO-SELECT] Auto-selecting first thread:", {
+      otherUserId: threads[0].otherUserId,
+      listingId: threads[0].listingId,
+    });
     setSelectedThread({
       otherUserId: threads[0].otherUserId,
       listingId: threads[0].listingId,
     });
-  }, [threads, selected.otherUserId, searchParams]);
+  }, [threads, selected.otherUserId, selected.listingId, searchParams]);
 
   // Navigate to thread and update URL
   const setSelectedThread = (thread: { otherUserId: string; listingId: string }) => {
     setSelected({ ...thread, hostId: thread.otherUserId });
     const params = new URLSearchParams();
     if (thread.otherUserId) params.set("hostId", thread.otherUserId);
-    if (thread.listingId && thread.listingId !== "all") params.set("listingId", thread.listingId);
+    // Always include listingId, even if it's "all"
+    params.set("listingId", thread.listingId || "all");
     const query = params.toString();
     router.replace(query ? `/dashboard/customer/messages?${query}` : "/dashboard/customer/messages");
   };
@@ -274,15 +329,13 @@ const MessageApp = () => {
   // Mark thread as read
   const markThreadRead = async (thread: { otherUserId: string; listingId: string }) => {
     try {
-      await fetch("/api/messages/read", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
+      await axios.patch("/api/messages/read",
+        {
           otherUserId: thread.otherUserId,
           listingId: thread.listingId,
-        }),
-      });
+        },
+        { withCredentials: true }
+      );
     } catch (error) {
       console.error("Error marking messages as read:", error);
     }
@@ -295,7 +348,7 @@ const MessageApp = () => {
     options?: { cursor?: string | null; append?: boolean }
   ) => {
     const normalizedListingId = !listingId || listingId === "all" ? "all" : listingId;
-    if (!hostId || !normalizedListingId) {
+    if (!hostId) {
       if (!options?.append) {
         setMessages([]);
         setMessagesHasMore(false);
@@ -317,18 +370,50 @@ const MessageApp = () => {
       if (options?.cursor) {
         params.set("cursor", options.cursor);
       }
-      const res = await fetch(
-        `/api/messages/${hostId}/${normalizedListingId}?${params.toString()}`,
-        { credentials: "include" }
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to load messages");
+      const url = `/api/messages/${hostId}/${normalizedListingId}?${params.toString()}`;
+      console.log("[fetchMessages] Calling:", url);
+
+      const response = await axios.get(url, {
+        withCredentials: true
+      });
+      const data = response.data;
+      console.log("[fetchMessages] Response status:", response.status);
+      console.log("[fetchMessages] Response data:", JSON.stringify(data, null, 2));
+
+      // Handle multiple response formats
+      let list: Message[] = [];
+      console.log("[fetchMessages] Checking response formats...");
+      console.log("[fetchMessages] Is array?", Array.isArray(data));
+      console.log("[fetchMessages] data.data is array?", Array.isArray(data?.data));
+      console.log("[fetchMessages] data.messages is array?", Array.isArray(data?.messages));
+
+      if (Array.isArray(data)) {
+        console.log("[fetchMessages] Using data as array");
+        list = data;
+      } else if (Array.isArray(data?.data)) {
+        console.log("[fetchMessages] Using data.data as array");
+        list = data.data;
+      } else if (data?.success && Array.isArray(data?.messages)) {
+        console.log("[fetchMessages] Using data.messages as array");
+        list = data.messages;
+      } else {
+        console.warn("[fetchMessages] Could not find messages in response. Full response:", data);
       }
 
-      const list = Array.isArray(data?.data) ? data.data : [];
+      console.log("[fetchMessages] Final list length:", list.length);
+
+      // Define normalized BEFORE using it
       const normalized = list.map((message: Message) => normalizeMessage(message));
-      setMessages((prev) => (append ? [...normalized, ...prev] : normalized));
+      console.log("[fetchMessages] Normalized messages:", normalized);
+
+      setMessages((prev) => {
+        const result = append ? [...normalized, ...prev] : normalized;
+        console.log("[fetchMessages] State updated. Total messages:", result.length);
+        if (result.length === 0) {
+          console.warn("[fetchMessages] WARNING: No messages in state! Normalized was:", normalized);
+        }
+        return result;
+      });
       setMessagesCursor(data.nextCursor || null);
       setMessagesHasMore(Boolean(data.nextCursor));
 
@@ -342,9 +427,14 @@ const MessageApp = () => {
           )
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching messages:", error);
-      if (!append) setMessages([]);
+      if (!append) {
+        setMessages([]);
+        if (!(error?.message || "").includes("Failed to load messages")) {
+          alert(`Error loading messages: ${error?.message || "Unknown error"}`);
+        }
+      }
     } finally {
       if (append) {
         setMessagesLoadingMore(false);
@@ -356,28 +446,60 @@ const MessageApp = () => {
 
   // Auto-fetch messages when thread is selected
   useEffect(() => {
-    if (!selected.otherUserId || !selected.listingId) return;
+    if (!selected.otherUserId || !selected.listingId) {
+      console.log("[AUTO-FETCH] Not fetching - missing selected values:", selected);
+      return;
+    }
+    console.log("[AUTO-FETCH] Triggering fetchMessages for thread:", selected);
     fetchMessages(selected.otherUserId, selected.listingId);
   }, [selected.otherUserId, selected.listingId]);
 
   // Initialize socket
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.log("[SOCKET] Not initializing - no user");
+      return;
+    }
 
     const token = localStorage.getItem("token");
     if (!token) {
+      console.log("[SOCKET] Not initializing - no token");
       router.push("/login");
       return;
     }
 
-    console.log("Initializing socket");
+    console.log("[SOCKET] Initializing socket for user:", user.id);
     initSocket(token);
     const newSocket = getSocket();
 
+    if (!newSocket) {
+      console.error("[SOCKET] Failed to get socket instance");
+      return;
+    }
+
+    console.log("[SOCKET] Socket initialized successfully");
+
     // Socket event listeners
     newSocket?.on("receiveMessage", (message: Message) => {
-      console.log("receiveMessage event received:", message);
-      setMessages((prev) => [...prev, normalizeMessage({ ...message, sending: false })]);
+      console.log("[receiveMessage] Event received with message:", message);
+      console.log("[receiveMessage] Current selected thread:", selected);
+
+      // Only add message if it's from the currently selected thread
+      const senderId = getUserId(message.sender);
+      const messageListingId = message.listingId || "all";
+      const normalizedListingId = selected.listingId || "all";
+
+      console.log("[receiveMessage] Checking filters:");
+      console.log("[receiveMessage]   senderId:", senderId, "vs selected.otherUserId:", selected.otherUserId);
+      console.log("[receiveMessage]   messageListingId:", messageListingId, "vs normalizedListingId:", normalizedListingId);
+      console.log("[receiveMessage]   Match?", senderId === selected.otherUserId && messageListingId === normalizedListingId);
+
+      if (senderId === selected.otherUserId && messageListingId === normalizedListingId) {
+        console.log("[receiveMessage] Adding message to current view");
+        setMessages((prev) => [...prev, normalizeMessage({ ...message, sending: false })]);
+      } else {
+        console.log("[receiveMessage] Message from different thread, not adding to current view");
+      }
     });
 
     newSocket?.on("messageSent", (data: any) => {
@@ -409,19 +531,48 @@ const MessageApp = () => {
       );
     });
 
+    newSocket?.on("typing", (data: { userId: string; otherUserId?: string; listingId?: string }) => {
+      console.log("typing event:", data);
+      // Show typing indicator if it's from the other user in current conversation
+      if (data.userId === selected.otherUserId) {
+        setIsOtherUserTyping(true);
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        typingTimeoutRef.current = setTimeout(() => {
+          setIsOtherUserTyping(false);
+        }, 3000);
+      }
+    });
+
+    newSocket?.on("stopTyping", (data: { userId: string; otherUserId?: string; listingId?: string }) => {
+      console.log("stopTyping event:", data);
+      if (data.userId === selected.otherUserId) {
+        setIsOtherUserTyping(false);
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+      }
+    });
+
     return () => {
       newSocket?.off("receiveMessage");
       newSocket?.off("messageSent");
       newSocket?.off("messageDeleted");
       newSocket?.off("messageUpdated");
+      newSocket?.off("typing");
+      newSocket?.off("stopTyping");
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
-  }, [user, router]);
+  }, [user, router, selected.otherUserId, selected.listingId]);
 
   // Auto-scroll to bottom of messages (but only when not loading more)
   useEffect(() => {
     if (!messagesContainerRef.current || messagesLoadingMore) return;
     messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-  }, [messages, messagesLoadingMore]);
+  }, [messages, messagesLoadingMore, isOtherUserTyping]);
 
   // Handle file attachment
   const handleAttachFiles = (files: FileList | null) => {
@@ -475,24 +626,32 @@ const MessageApp = () => {
       formData.append("files", file);
     });
 
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    });
+    try {
+      const response = await axios.post("/api/upload", formData, {
+        withCredentials: true,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || "Upload failed");
+      return response.data.files.map((f: any) => ({
+        url: f.path,
+        mimeType: f.mimetype,
+        kind: f.mimetype.startsWith("image/") ? "image" : "video",
+        fileName: f.originalname,
+      }));
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || "Upload failed");
     }
+  };
 
-    const data = await res.json();
-    return data.files.map((f: any) => ({
-      url: f.path,
-      mimeType: f.mimetype,
-      kind: f.mimetype.startsWith("image/") ? "image" : "video",
-      fileName: f.originalname,
-    }));
+  // Handle input changes and emit typing events
+  const handleInputChange = (value: string) => {
+    setMessageInput(value);
+    // Emit typing event
+    if (value.trim()) {
+      startTyping(selected.otherUserId, selected.listingId);
+    }
   };
 
   // Send message
@@ -501,6 +660,9 @@ const MessageApp = () => {
     if (!content && attachments.length === 0) return;
     if (!selected.otherUserId || !selected.listingId) return;
     if (!user) return;
+
+    // Stop typing when sending message
+    stopTyping(selected.otherUserId, selected.listingId);
 
     const tempId = `temp_${Date.now()}`;
     let mediaItems: MediaItem[] = [];
@@ -567,24 +729,20 @@ const MessageApp = () => {
     const content = messageInput.trim();
     if (!content) return;
 
-    try {
-      const res = await fetch(`/api/messages/${editingMessage._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ content }),
-      });
+    // Stop typing when updating message
+    stopTyping(selected.otherUserId, selected.listingId);
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update message");
-      }
+    try {
+      await axios.put(`/api/messages/${editingMessage._id}`,
+        { content },
+        { withCredentials: true }
+      );
 
       setMessageInput("");
       setEditingMessage(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating message:", error);
-      alert("Failed to update message");
+      alert(error?.response?.data?.message || "Failed to update message");
     }
   };
 
@@ -598,20 +756,17 @@ const MessageApp = () => {
     if (!deleteModal.message) return;
 
     try {
-      const res = await fetch(`/api/messages/${deleteModal.message._id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete message");
-      }
+      await axios.delete(`/api/messages/${deleteModal.message._id}`,
+        {
+          data: { deleteType: "for_me" },
+          withCredentials: true
+        }
+      );
 
       setDeleteModal({ open: false, message: null });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting message:", error);
-      alert("Failed to delete message");
+      alert(error?.response?.data?.message || "Failed to delete message");
     }
   };
 
@@ -665,12 +820,27 @@ const MessageApp = () => {
     return () => document.removeEventListener("click", handleClick);
   }, [contextMenu.open]);
 
+  // Debug logging
+  useEffect(() => {
+    console.log("[Render] user state:", user);
+  }, [user]);
+
+  useEffect(() => {
+    console.log("[Render] threads state:", threads);
+  }, [threads]);
+
+  useEffect(() => {
+    console.log("[Render] messages state:", messages);
+    console.log("[Render] selected thread:", selected);
+    console.log("[Render] loading messages:", loadingMessages);
+  }, [messages, selected]);
   return (
     <div className="h-screen flex bg-gray-50">
       {/* Threads Sidebar */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800">Messages</h2>
+          {user && <p className="text-xs text-gray-500 mt-1">Logged in as: {user.name}</p>}
         </div>
 
         <div
@@ -678,9 +848,14 @@ const MessageApp = () => {
           onScroll={handleThreadsScroll}
         >
           {threadsLoading ? (
-            <div className="p-4 text-center text-gray-500">Loading...</div>
+            <div className="p-4 text-center text-gray-500">Loading conversations...</div>
           ) : threads.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">No conversations</div>
+            <div className="p-4 text-center">
+              <p className="text-gray-500 mb-3">No conversations yet</p>
+              <p className="text-xs text-gray-400">
+                Start a booking to begin messaging with hosts or guests
+              </p>
+            </div>
           ) : (
             <>
               {threads.map((thread) => (
@@ -693,9 +868,9 @@ const MessageApp = () => {
                     })
                   }
                   className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selected.otherUserId === thread.otherUserId &&
-                      selected.listingId === thread.listingId
-                      ? "bg-blue-50"
-                      : ""
+                    selected.listingId === thread.listingId
+                    ? "bg-blue-50"
+                    : ""
                     }`}
                 >
                   <div className="flex items-center justify-between">
@@ -757,62 +932,74 @@ const MessageApp = () => {
               ) : messages.length === 0 ? (
                 <div className="text-center text-gray-500">No messages yet</div>
               ) : (
-                messages.map((msg, index) => {
-                  const senderId = getUserId(msg.sender);
-                  const isSender = senderId === user?.id;
+                <>
+                  {messages.map((msg, index) => {
+                    const senderId = getUserId(msg.sender);
+                    const isSender = senderId === user?.id;
 
-                  return (
-                    <div
-                      key={msg._id || msg.tempId || index}
-                      className={`flex ${isSender ? "justify-end" : "justify-start"}`}
-                      onContextMenu={(e) => handleContextMenu(e, msg)}
-                    >
+                    return (
                       <div
-                        className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-lg ${isSender
+                        key={msg._id || msg.tempId || index}
+                        className={`flex ${isSender ? "justify-end" : "justify-start"}`}
+                        onContextMenu={(e) => handleContextMenu(e, msg)}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-lg ${isSender
                             ? "bg-blue-600 text-white"
                             : "bg-gray-200 text-gray-800"
-                          } ${msg.sending ? "opacity-50" : ""}`}
-                      >
-                        {msg.media && msg.media.length > 0 && (
-                          <div className="space-y-2 mb-2">
-                            {msg.media.map((item, idx) => {
-                              const fullUrl = normalizeMediaUrl(item.url);
-                              return (
-                                <div key={idx}>
-                                  {item.kind === "image" ? (
-                                    <Image
-                                      src={fullUrl}
-                                      alt={item.fileName || "image"}
-                                      width={300}
-                                      height={200}
-                                      className="rounded"
-                                    />
-                                  ) : (
-                                    <video
-                                      src={fullUrl}
-                                      controls
-                                      className="rounded max-w-full"
-                                      style={{ maxHeight: "300px" }}
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
-                        {msg.createdAt && (
-                          <p
-                            className={`text-xs mt-1 ${isSender ? "text-blue-100" : "text-gray-500"
-                              }`}
-                          >
-                            {format(new Date(msg.createdAt), "h:mm a")}
-                          </p>
-                        )}
+                            } ${msg.sending ? "opacity-50" : ""}`}
+                        >
+                          {msg.media && msg.media.length > 0 && (
+                            <div className="space-y-2 mb-2">
+                              {msg.media.map((item, idx) => {
+                                const fullUrl = normalizeMediaUrl(item.url);
+                                return (
+                                  <div key={idx}>
+                                    {item.kind === "image" ? (
+                                      <img
+                                        src={fullUrl}
+                                        alt={item.fileName || "image"}
+                                        className="rounded max-w-full"
+                                        style={{ maxHeight: "300px", maxWidth: "100%" }}
+                                      />
+                                    ) : (
+                                      <video
+                                        src={fullUrl}
+                                        controls
+                                        className="rounded max-w-full"
+                                        style={{ maxHeight: "300px" }}
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.createdAt && (
+                            <p
+                              className={`text-xs mt-1 ${isSender ? "text-blue-100" : "text-gray-500"
+                                }`}
+                            >
+                              {format(new Date(msg.createdAt), "h:mm a")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {isOtherUserTyping && (
+                    <div className="flex justify-start">
+                      <div className="max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-lg bg-gray-200 text-gray-800">
+                        <div className="flex items-center gap-1">
+                          <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce"></div>
+                          <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
                       </div>
                     </div>
-                  );
-                })
+                  )}
+                </>
               )}
             </div>
 
@@ -880,7 +1067,7 @@ const MessageApp = () => {
                 <input
                   type="text"
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={(e) => handleInputChange(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();

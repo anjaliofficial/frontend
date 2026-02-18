@@ -252,14 +252,14 @@ export default function HostMessagesPage() {
       searchParams.get("otherUserId") ||
       searchParams.get("listingId");
     if (hasQuery) return;
-    if (selected.otherUserId || selected.listingId) return;
+    if (selected.otherUserId) return; // Already selected, don't auto-select
     if (threads.length === 0) return;
     setSelectedThread({
       otherUserId: threads[0].otherUserId,
       listingId: threads[0].listingId,
       bookingId: threads[0].bookingId,
     });
-  }, [threads, selected.otherUserId, selected.listingId, searchParams]);
+  }, [threads, selected.otherUserId, searchParams]);
 
   const fetchMessages = async (
     otherUserId: string,
