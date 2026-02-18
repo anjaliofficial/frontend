@@ -52,6 +52,10 @@ interface Message {
   sending?: boolean;
   media?: MediaItem[];
   type?: "text" | "media";
+  isDeleted?: boolean;
+  isEdited?: boolean;
+  read?: boolean;
+  deletedFor?: string[];
 }
 
 interface Thread {
@@ -179,8 +183,12 @@ const MessageApp = () => {
         });
         console.log("[USER] Response received:", response.data);
         // Response is { success: true, user: {...} }
-        const userData = response.data.user || response.data.data || response.data;
-        console.log("[USER] Setting user state:", userData);
+        let userData = response.data.user || response.data.data || response.data;
+        // Ensure we have an id field (backend uses _id)
+        if (userData && !userData.id && userData._id) {
+          userData = { ...userData, id: userData._id };
+        }
+        console.log("[USER] Setting user state with id:", userData?.id, userData);
         setUser(userData);
       } catch (error) {
         console.error("[USER] Error loading user:", error);
@@ -627,6 +635,7 @@ const MessageApp = () => {
     });
 
     try {
+      console.log("[Upload] Uploading files:", files.map(f => ({ name: f.name, size: f.size })));
       const response = await axios.post("/api/upload", formData, {
         withCredentials: true,
         headers: {
@@ -634,14 +643,27 @@ const MessageApp = () => {
         },
       });
 
-      return response.data.files.map((f: any) => ({
-        url: f.path,
-        mimeType: f.mimetype,
-        kind: f.mimetype.startsWith("image/") ? "image" : "video",
-        fileName: f.originalname,
+      console.log("[Upload] Response:", response.data);
+
+      // Handle different response formats
+      const uploadedFiles = response.data.files || response.data.data || [];
+      if (!Array.isArray(uploadedFiles)) {
+        throw new Error("Invalid response format: files not an array");
+      }
+
+      return uploadedFiles.map((f: any) => ({
+        url: f.path || f.url,
+        mimeType: f.mimeType || f.mimetype,
+        kind: (f.mimeType || f.mimetype || "").startsWith("image/") ? "image" : "video",
+        fileName: f.filename || f.originalname || f.fileName,
       }));
     } catch (error: any) {
-      throw new Error(error?.response?.data?.message || "Upload failed");
+      console.error("[Upload] Error details:", {
+        message: error.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+      });
+      throw new Error(error?.response?.data?.message || error.message || "Upload failed");
     }
   };
 
@@ -674,9 +696,9 @@ const MessageApp = () => {
         // Clean up preview URLs
         attachments.forEach((a) => URL.revokeObjectURL(a.preview));
         setAttachments([]);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Upload error:", error);
-        alert("Failed to upload attachments");
+        alert(`Failed to upload attachments: ${error.message}`);
         return;
       }
     }
@@ -949,7 +971,7 @@ const MessageApp = () => {
                             : "bg-gray-200 text-gray-800"
                             } ${msg.sending ? "opacity-50" : ""}`}
                         >
-                          {msg.media && msg.media.length > 0 && (
+                          {!msg.isDeleted && msg.media && msg.media.length > 0 && (
                             <div className="space-y-2 mb-2">
                               {msg.media.map((item, idx) => {
                                 const fullUrl = normalizeMediaUrl(item.url);
@@ -975,7 +997,11 @@ const MessageApp = () => {
                               })}
                             </div>
                           )}
-                          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.isDeleted ? (
+                            <p className="italic text-gray-500">This message was deleted</p>
+                          ) : (
+                            msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>
+                          )}
                           {msg.createdAt && (
                             <p
                               className={`text-xs mt-1 ${isSender ? "text-blue-100" : "text-gray-500"
