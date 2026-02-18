@@ -8,11 +8,29 @@ import ContextMenu from "./ContextMenu";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import Toast from "./Toast";
 
+const RAW_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5050";
+const API_BASE = RAW_API_BASE.endsWith("/api")
+  ? RAW_API_BASE.slice(0, -4)
+  : RAW_API_BASE;
+
+const normalizeMediaUrl = (url: string): string => {
+  if (!url) return "";
+  const normalized = url.replace(/\\/g, "/");
+  if (normalized.startsWith("http")) return normalized;
+  if (normalized.startsWith("/uploads/")) {
+    return `${API_BASE}${normalized}`;
+  }
+  const filename = normalized.split("/").pop() || normalized;
+  return `${API_BASE}/uploads/${filename}`;
+};
+
 interface Message {
   _id: string;
   sender: string;
   receiver: string;
   content: string;
+  type?: "text" | "media";
+  media?: MediaItem[];
   createdAt: string;
   read?: boolean;
   isEdited?: boolean;
@@ -30,6 +48,19 @@ interface ThreadItem {
   lastMessage: string;
   lastMessageAt: string;
   unread: boolean;
+}
+
+interface MediaItem {
+  url: string;
+  mimeType: string;
+  kind: "image" | "video";
+  fileName?: string;
+}
+
+interface AttachmentPreview {
+  file: File;
+  url: string;
+  kind: "image" | "video";
 }
 
 export default function HostMessagesPage() {
@@ -58,7 +89,10 @@ export default function HostMessagesPage() {
   const threadPageSize = 6;
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editOriginal, setEditOriginal] = useState("");
+  const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState({
@@ -185,7 +219,9 @@ export default function HostMessagesPage() {
         bookingId: "",
         title: thread.otherUserName || "Guest",
         subtitle: "",
-        lastMessage: thread.lastMessage?.content || "",
+        lastMessage:
+          thread.lastMessage?.content ||
+          (thread.lastMessage?.media?.length ? "Attachment" : ""),
         lastMessageAt: thread.lastMessage?.createdAt || "",
         unread: Boolean(thread.unreadCount && thread.unreadCount > 0),
       }));
@@ -300,10 +336,69 @@ export default function HostMessagesPage() {
     fetchMessages(selected.otherUserId, selected.listingId);
   }, [selected.otherUserId, selected.listingId]);
 
-  const sendMessage = async () => {
+  const handleAttachFiles = (files: FileList | File[]) => {
+    const next: AttachmentPreview[] = [];
+    Array.from(files).forEach((file) => {
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      if (!isImage && !isVideo) {
+        setToast({ message: "Only images and videos are allowed", type: "error" });
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setToast({ message: "File size exceeds 10MB", type: "error" });
+        return;
+      }
+      next.push({
+        file,
+        url: URL.createObjectURL(file),
+        kind: isImage ? "image" : "video",
+      });
+    });
+    if (next.length) {
+      setAttachments((prev) => [...prev, ...next]);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      if (removed) {
+        URL.revokeObjectURL(removed.url);
+      }
+      return next;
+    });
+  };
+
+  const uploadAttachments = async (): Promise<MediaItem[]> => {
+    if (!attachments.length) return [];
+    const formData = new FormData();
+    attachments.forEach((item) => formData.append("files", item.file));
+
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || "Upload failed");
+    }
+
+    const uploaded = Array.isArray(data?.files) ? data.files : [];
+    return uploaded.map((file: any) => ({
+      url: file.path,
+      mimeType: file.mimeType,
+      kind: String(file.mimeType || "").startsWith("video/") ? "video" : "image",
+      fileName: file.filename,
+    }));
+  };
+
+  const sendMessage = async (media?: MediaItem[]) => {
     if (!selected.otherUserId || !selected.listingId) return;
     const content = draft.trim();
-    if (!content) return;
+    if (!content && (!media || media.length === 0)) return;
     try {
       console.log("Sending message from host to customer:", selected.otherUserId);
       const res = await fetch("/api/messages", {
@@ -314,6 +409,7 @@ export default function HostMessagesPage() {
           receiverId: selected.otherUserId,
           listingId: selected.listingId,
           content,
+          media: media && media.length ? media : undefined,
         }),
       });
 
@@ -324,6 +420,10 @@ export default function HostMessagesPage() {
 
       console.log("Message sent successfully:", data.data);
       setDraft("");
+      setAttachments((prev) => {
+        prev.forEach((item) => URL.revokeObjectURL(item.url));
+        return [];
+      });
       setToast({ message: "Message sent", type: "success" });
       fetchMessages(selected.otherUserId, selected.listingId);
       fetchThreads();
@@ -345,7 +445,16 @@ export default function HostMessagesPage() {
       await handleEditMessage(editingMessageId, content);
       return;
     }
-    await sendMessage();
+    try {
+      setUploading(true);
+      const media = await uploadAttachments();
+      await sendMessage(media);
+    } catch (error) {
+      console.error("Upload error:", error);
+      setToast({ message: "Upload failed", type: "error" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSend = async (event: FormEvent) => {
@@ -659,7 +768,28 @@ export default function HostMessagesPage() {
                             } ${message.isDeleted ? "opacity-60 italic pointer-events-none" : ""}`}
                         >
                           <>
-                            <p>{message.content}</p>
+                            {message.media && message.media.length > 0 && (
+                              <div className="space-y-2 mb-2">
+                                {message.media.map((item, index) => (
+                                  <div key={`${item.url}-${index}`}>
+                                    {item.kind === "image" ? (
+                                      <img
+                                        src={normalizeMediaUrl(item.url)}
+                                        alt={item.fileName || "attachment"}
+                                        className="max-h-64 rounded-lg border border-white/20"
+                                      />
+                                    ) : (
+                                      <video
+                                        src={normalizeMediaUrl(item.url)}
+                                        controls
+                                        className="max-h-64 rounded-lg border border-white/20"
+                                      />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {message.content && <p>{message.content}</p>}
                             <div className="flex items-center justify-between mt-1 gap-2">
                               <p className={`text-xs ${isOwn ? "text-emerald-100" : "text-gray-500"}`}>
                                 {new Date(message.createdAt).toLocaleString()}
@@ -681,7 +811,55 @@ export default function HostMessagesPage() {
             {draft.trim() && (
               <div className="text-xs text-gray-500 mb-2">Typing...</div>
             )}
+            {attachments.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-3">
+                {attachments.map((item, index) => (
+                  <div key={`${item.file.name}-${index}`} className="relative">
+                    {item.kind === "image" ? (
+                      <img
+                        src={item.url}
+                        alt={item.file.name}
+                        className="h-20 w-20 rounded-lg object-cover border border-gray-200"
+                      />
+                    ) : (
+                      <video
+                        src={item.url}
+                        className="h-20 w-20 rounded-lg object-cover border border-gray-200"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(index)}
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-gray-800 text-white text-xs"
+                      aria-label="Remove attachment"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/mp4,video/webm"
+                multiple
+                onChange={(event) => {
+                  if (event.target.files) {
+                    handleAttachFiles(event.target.files);
+                    event.target.value = "";
+                  }
+                }}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Attach
+              </button>
               <input
                 type="text"
                 value={draft}
@@ -699,15 +877,20 @@ export default function HostMessagesPage() {
                       : "Type your message..."
                     : "Select a guest to start chatting"
                 }
-                disabled={!selected.otherUserId || !selected.listingId}
+                disabled={!selected.otherUserId || !selected.listingId || uploading}
                 className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100"
               />
               <button
                 type="submit"
-                disabled={!draft.trim() || !selected.otherUserId || !selected.listingId}
+                disabled={
+                  (!draft.trim() && attachments.length === 0) ||
+                  !selected.otherUserId ||
+                  !selected.listingId ||
+                  uploading
+                }
                 className="px-5 py-2 rounded-lg bg-emerald-600 text-white font-semibold disabled:bg-emerald-300"
               >
-                Send
+                {uploading ? "Uploading..." : "Send"}
               </button>
             </div>
           </form>
@@ -725,9 +908,18 @@ export default function HostMessagesPage() {
             onEdit={() => {
               const messageToEdit = messages.find((msg) => msg._id === contextMenu.messageId);
               if (messageToEdit) {
+                if (messageToEdit.media && messageToEdit.media.length > 0) {
+                  setToast({ message: "Media messages cannot be edited", type: "info" });
+                  setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
+                  return;
+                }
                 setEditingMessageId(contextMenu.messageId);
                 setEditOriginal(messageToEdit.content);
                 setDraft(messageToEdit.content);
+                setAttachments((prev) => {
+                  prev.forEach((item) => URL.revokeObjectURL(item.url));
+                  return [];
+                });
               }
               setContextMenu({ isOpen: false, x: 0, y: 0, messageId: "", isOwnMessage: false });
             }}

@@ -30,8 +30,18 @@ export async function GET(
       },
     );
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+
+    const text = await res.text();
+    console.error(`Backend error - Status: ${res.status}, Response: ${text}`);
+    return NextResponse.json(
+      { message: "Failed to fetch messages from backend" },
+      { status: res.status || 500 },
+    );
   } catch (error) {
     console.error("Error fetching messages:", error);
     return NextResponse.json(

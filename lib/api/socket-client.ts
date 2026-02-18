@@ -46,7 +46,13 @@ export const disconnectSocket = () => {
 export const sendMessage = (data: {
   receiverId: string;
   listingId: string;
-  content: string;
+  content?: string;
+  media?: {
+    url: string;
+    mimeType: string;
+    kind: "image" | "video";
+    fileName?: string;
+  }[];
   tempId: string;
 }) => {
   if (socket?.connected) {
