@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const queryString = searchParams.toString();
     const url = new URL(
-      `${API_BASE}/api/admin/messages/conversations${queryString ? `?${queryString}` : ""}`,
+      `${API_BASE}/api/moderation/reports${queryString ? `?${queryString}` : ""}`,
     );
 
     const cookieToken = req.cookies.get("token")?.value;
@@ -29,13 +29,10 @@ export async function GET(req: NextRequest) {
     if (!response.ok) {
       const text = await response.text();
       console.error(
-        `Admin conversations error - Status: ${response.status}, Response: ${text}`,
+        `Admin reports error - Status: ${response.status}, Response: ${text}`,
       );
       return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to fetch conversations from backend",
-        },
+        { success: false, message: "Failed to fetch reports from backend" },
         { status: response.status },
       );
     }
@@ -43,7 +40,7 @@ export async function GET(req: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error("Admin conversations API error:", error);
+    console.error("Admin reports API error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 },

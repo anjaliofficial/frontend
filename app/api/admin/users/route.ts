@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const queryString = searchParams.toString();
     const url = new URL(
-      `${API_BASE}/admin/users${queryString ? `?${queryString}` : ""}`,
+      `${API_BASE}/api/admin/users${queryString ? `?${queryString}` : ""}`,
     );
 
     const cookieToken = req.cookies.get("token")?.value;
@@ -59,11 +59,11 @@ export async function POST(req: NextRequest) {
     const authHeader = cookieToken ? `Bearer ${cookieToken}` : headerAuth;
     const body = await req.json();
 
-    let url = `${API_BASE}/admin/users`;
+    let url = `${API_BASE}/api/admin/users`;
     if (userId && action) {
-      url = `${API_BASE}/admin/users/${userId}/${action}`;
+      url = `${API_BASE}/api/admin/users/${userId}/${action}`;
     } else if (userId) {
-      url = `${API_BASE}/admin/users/${userId}`;
+      url = `${API_BASE}/api/admin/users/${userId}`;
     }
 
     const response = await fetch(url, {
@@ -77,7 +77,9 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error(`Admin error - Status: ${response.status}, Response: ${text}`);
+      console.error(
+        `Admin error - Status: ${response.status}, Response: ${text}`,
+      );
       return NextResponse.json(
         { success: false, message: "Failed to update user from backend" },
         { status: response.status },
@@ -121,7 +123,9 @@ export async function DELETE(req: NextRequest) {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error(`Admin error - Status: ${response.status}, Response: ${text}`);
+      console.error(
+        `Admin error - Status: ${response.status}, Response: ${text}`,
+      );
       return NextResponse.json(
         { success: false, message: "Failed to delete user from backend" },
         { status: response.status },

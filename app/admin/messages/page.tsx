@@ -10,6 +10,7 @@ import {
     Calendar,
     Home,
 } from "lucide-react";
+import { getToken } from "@/lib/auth/storage";
 
 interface Message {
     _id: string;
@@ -50,6 +51,7 @@ export default function AdminMessagesPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [userId, setUserId] = useState("");
     const [selectedConversation, setSelectedConversation] = useState<{
@@ -78,13 +80,14 @@ export default function AdminMessagesPage() {
 
                 params.append("limit", "20");
 
+                const token = getToken();
                 const response = await fetch(
                     `/api/admin/messages?${params.toString()}`,
                     {
                         headers: {
                             "Content-Type": "application/json",
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
                         },
-                        credentials: "include",
                     }
                 );
 
@@ -107,19 +110,28 @@ export default function AdminMessagesPage() {
     const fetchConversations = useCallback(async () => {
         try {
             setLoading(true);
+            setError(null);
+            const token = getToken();
             const response = await fetch("/api/admin/messages/conversations", {
                 headers: {
                     "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
-                credentials: "include",
             });
 
-            if (!response.ok) throw new Error("Failed to fetch conversations");
+            if (!response.ok) {
+                setError("Conversations feature is not available yet");
+                setConversations([]);
+                return;
+            }
 
             const data = await response.json();
             setConversations(data.conversations || []);
+            setError(null);
         } catch (error) {
-            console.error("Error fetching conversations:", error);
+            console.error("Failed to fetch conversations:", error);
+            setError("Failed to load conversations");
+            setConversations([]);
         } finally {
             setLoading(false);
         }
@@ -130,13 +142,14 @@ export default function AdminMessagesPage() {
         async (userId1: string, userId2: string) => {
             try {
                 setLoading(true);
+                const token = getToken();
                 const response = await fetch(
                     `/api/admin/messages/between/${userId1}/${userId2}`,
                     {
                         headers: {
                             "Content-Type": "application/json",
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
                         },
-                        credentials: "include",
                     }
                 );
 
@@ -352,7 +365,12 @@ export default function AdminMessagesPage() {
                                 ) : (
                                     // Conversations View
                                     <div className="divide-y">
-                                        {conversations.length > 0 ? (
+                                        {error ? (
+                                            <div className="p-8 text-center text-gray-600">
+                                                <MessageCircle className="mx-auto mb-3 text-gray-400" size={32} />
+                                                <p>{error}</p>
+                                            </div>
+                                        ) : conversations.length > 0 ? (
                                             conversations.map((conv) => (
                                                 <div
                                                     key={conv.otherUserId}
@@ -376,13 +394,13 @@ export default function AdminMessagesPage() {
                                                         )}
                                                         <div className="flex-1">
                                                             <p className="font-semibold text-gray-900">
-                                                                {conv.otherUserName}
+                                                                {conv.otherUserName ?? "Unknown User"}
                                                             </p>
                                                             <p className="text-sm text-gray-500">
-                                                                {conv.otherUserEmail}
+                                                                {conv.otherUserEmail ?? "N/A"}
                                                             </p>
                                                             <p className="text-sm text-gray-700 truncate mt-1">
-                                                                {conv.lastMessage.content}
+                                                                {conv.lastMessage?.content ?? "No messages"}
                                                             </p>
                                                             <p className="text-xs text-gray-500 mt-1">
                                                                 {`${conv.messageCount} message${conv.messageCount !== 1 ? "s" : ""}`}
@@ -390,9 +408,12 @@ export default function AdminMessagesPage() {
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="text-xs text-gray-500">
-                                                                {new Date(
-                                                                    conv.lastMessage.createdAt
-                                                                ).toLocaleDateString()}
+                                                                {conv.lastMessage?.createdAt
+                                                                    ? new Date(
+                                                                        conv.lastMessage.createdAt
+                                                                    ).toLocaleDateString()
+                                                                    : "N/A"
+                                                                }
                                                             </p>
                                                         </div>
                                                     </div>

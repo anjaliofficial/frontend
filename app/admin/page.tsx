@@ -27,6 +27,9 @@ interface DashboardStats {
         confirmed: number;
         cancelled: number;
     };
+    messages: {
+        total: number;
+    };
     // Transaction management removed - not needed for now
     // transactions: {
     //     totalRevenue: number;
@@ -118,17 +121,23 @@ export default function AdminDashboard() {
 
                     <button
                         type="button"
-                        onClick={() => router.push("/admin/bookings")}
+                        onClick={() => router.push("/admin/messages")}
                         className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-left"
                     >
-                        <div className="text-3xl font-bold text-purple-600">
-                            {stats?.bookings.total || 0}
-                        </div>
-                        <p className="text-gray-600 mt-2">Total Bookings</p>
-                        <span className="text-sm text-purple-600 mt-4 block">Manage Bookings →</span>
+                        <div className="text-3xl font-bold text-indigo-600">{stats?.messages.total || 0}</div>
+                        <p className="text-gray-600 mt-2">Total Messages</p>
+                        <span className="text-sm text-indigo-600 mt-4 block">View Messages →</span>
                     </button>
 
-                    {/* Transaction Management Removed - Not needed for now */}
+                    <button
+                        type="button"
+                        onClick={() => router.push("/admin/reports")}
+                        className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-left"
+                    >
+                        <div className="text-3xl font-bold text-red-600">Reports</div>
+                        <p className="text-gray-600 mt-2">Reported Messages</p>
+                        <span className="text-sm text-red-600 mt-4 block">Review Reports →</span>
+                    </button>
                     {/* <Link href="/admin/transactions">
                         <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer">
                             <div className="text-3xl font-bold text-orange-600">

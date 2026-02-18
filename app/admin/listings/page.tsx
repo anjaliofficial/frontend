@@ -205,18 +205,18 @@ export default function ListingsManagement() {
                                     {listings.map((listing) => (
                                         <tr key={listing._id} className="border-b hover:bg-gray-50">
                                             <td className="px-6 py-4 font-medium text-gray-900 max-w-xs truncate">
-                                                {listing.title}
+                                                {listing.title ?? "N/A"}
                                             </td>
-                                            <td className="px-6 py-4 text-gray-600">{listing.location}</td>
+                                            <td className="px-6 py-4 text-gray-600">{listing.location ?? "N/A"}</td>
                                             <td className="px-6 py-4">
                                                 <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold capitalize">
-                                                    {listing.propertyType}
+                                                    {listing.propertyType ?? "N/A"}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-gray-600">
                                                 <div>
-                                                    <p className="font-medium">{listing.hostId.fullName}</p>
-                                                    <p className="text-sm text-gray-500">{listing.hostId.email}</p>
+                                                    <p className="font-medium">{listing.hostId?.fullName ?? "N/A"}</p>
+                                                    <p className="text-sm text-gray-500">{listing.hostId?.email ?? "N/A"}</p>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 font-semibold text-gray-900">

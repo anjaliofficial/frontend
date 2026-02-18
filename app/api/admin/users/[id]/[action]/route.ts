@@ -12,15 +12,20 @@ export async function POST(
 ) {
   try {
     const { id, action } = params;
-    const token = req.cookies.get("token")?.value;
+    const cookieToken = req.cookies.get("token")?.value;
+    const headerAuth = req.headers.get("authorization");
+    const authHeader = cookieToken ? `Bearer ${cookieToken}` : headerAuth;
 
-    const response = await fetch(`${API_BASE}/admin/users/${id}/${action}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+    const response = await fetch(
+      `${API_BASE}/api/admin/users/${id}/${action}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { Authorization: authHeader } : {}),
+        },
       },
-    });
+    );
 
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });

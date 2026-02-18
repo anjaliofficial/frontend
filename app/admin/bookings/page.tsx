@@ -189,12 +189,12 @@ export default function BookingsManagement() {
                                     {bookings.map((booking) => (
                                         <tr key={booking._id} className="border-b hover:bg-gray-50">
                                             <td className="px-6 py-4 font-medium text-gray-900 max-w-xs truncate">
-                                                {booking.listingId.title}
+                                                {booking.listingId?.title ?? "N/A"}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600">
                                                 <div>
-                                                    <p className="font-semibold">{booking.customerId.fullName}</p>
-                                                    <p className="text-sm text-gray-500">{booking.customerId.email}</p>
+                                                    <p className="font-semibold">{booking.customerId?.fullName ?? "N/A"}</p>
+                                                    <p className="text-sm text-gray-500">{booking.customerId?.email ?? "N/A"}</p>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-600">

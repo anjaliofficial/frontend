@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const queryString = searchParams.toString();
     const url = new URL(
-      `${API_BASE}/admin/messages${queryString ? `?${queryString}` : ""}`,
+      `${API_BASE}/api/admin/messages${queryString ? `?${queryString}` : ""}`,
     );
 
     const cookieToken = req.cookies.get("token")?.value;

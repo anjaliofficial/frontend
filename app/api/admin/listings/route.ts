@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const queryString = searchParams.toString();
     const url = new URL(
-      `${API_BASE}/admin/listings${queryString ? `?${queryString}` : ""}`,
+      `${API_BASE}/api/admin/listings${queryString ? `?${queryString}` : ""}`,
     );
 
     const cookieToken = req.cookies.get("token")?.value;
@@ -25,6 +25,17 @@ export async function GET(req: NextRequest) {
         ...(authHeader ? { Authorization: authHeader } : {}),
       },
     });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(
+        `Admin listings error - Status: ${response.status}, Response: ${text}`,
+      );
+      return NextResponse.json(
+        { success: false, message: "Failed to fetch listings from backend" },
+        { status: response.status },
+      );
+    }
 
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });

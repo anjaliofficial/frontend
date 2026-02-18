@@ -68,11 +68,14 @@ export default function UsersManagement() {
                 : newStatus === "suspended"
                     ? "suspend"
                     : "ban";
-            const endpoint = `/api/admin/users?action=${action}&id=${userId}`;
+            const endpoint = `/api/admin/users/${userId}/${action}`;
             const token = getToken();
             const response = await fetch(endpoint, {
                 method: "POST",
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
             });
             const data = await response.json();
             if (data.success) {
@@ -87,9 +90,12 @@ export default function UsersManagement() {
         if (!confirm("Are you sure you want to delete this user?")) return;
         try {
             const token = getToken();
-            const response = await fetch(`/api/admin/users?id=${userId}`, {
+            const response = await fetch(`/api/admin/users/${userId}`, {
                 method: "DELETE",
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
             });
             const data = await response.json();
             if (data.success) {
