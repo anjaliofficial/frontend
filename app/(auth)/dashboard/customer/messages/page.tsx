@@ -31,6 +31,7 @@ interface User {
   name?: string;
   avatar?: string;
   email?: string;
+  profilePicture?: string;
 }
 
 interface MediaItem {
@@ -62,6 +63,8 @@ interface Message {
 interface Thread {
   id: string;
   otherUserId: string;
+  otherUserName?: string;
+  otherUserImage?: string;
   listingId: string;
   title: string;
   lastMessage: string;
@@ -261,6 +264,8 @@ const MessageApp = () => {
         const mapped = {
           id: `${String(thread.otherUserId)}_${String(thread.listingId)}`,
           otherUserId: String(thread.otherUserId),
+          otherUserName: thread.otherUserName || "Host",
+          otherUserImage: thread.otherUserImage,
           listingId: thread.listingId ? String(thread.listingId) : "all",
           title: thread.otherUserName || "Host",
           lastMessage: thread.lastMessage?.type === "media"
@@ -947,20 +952,35 @@ const MessageApp = () => {
                     : ""
                     }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-gray-800">{thread.title}</h3>
-                    {thread.unread && (
-                      <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                    )}
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex-shrink-0 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                      {thread.otherUserImage ? (
+                        <img
+                          src={normalizeMediaUrl(thread.otherUserImage)}
+                          alt={thread.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        thread.otherUserName?.charAt(0)?.toUpperCase() || "H"
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium text-gray-800">{thread.title}</h3>
+                        {thread.unread && (
+                          <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 truncate mt-1">
+                        {thread.lastMessage || "No messages yet"}
+                      </p>
+                      {thread.lastMessageAt && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {format(new Date(thread.lastMessageAt), "MMM d, h:mm a")}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 truncate mt-1">
-                    {thread.lastMessage || "No messages yet"}
-                  </p>
-                  {thread.lastMessageAt && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {format(new Date(thread.lastMessageAt), "MMM d, h:mm a")}
-                    </p>
-                  )}
                 </div>
               ))}
               {threadsLoadingMore && (
@@ -1026,60 +1046,79 @@ const MessageApp = () => {
                     return (
                       <div
                         key={msg._id || msg.tempId || index}
-                        className={`flex ${isSender ? "justify-end" : "justify-start"}`}
+                        className={`flex gap-2 ${isSender ? "justify-end" : "justify-start"}`}
                         onContextMenu={(e) => handleContextMenu(e, msg)}
                       >
-                        <div
-                          className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-lg ${isSender
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-200 text-gray-800"
-                            } ${msg.sending ? "opacity-50" : ""}`}
-                        >
-                          {!msg.isDeleted && msg.media && msg.media.length > 0 && (
-                            <div className="space-y-2 mb-2">
-                              {msg.media.map((item, idx) => {
-                                const fullUrl = normalizeMediaUrl(item.url);
-                                return (
-                                  <div key={idx}>
-                                    {item.kind === "image" ? (
-                                      <img
-                                        src={fullUrl}
-                                        alt={item.fileName || "image"}
-                                        className="rounded max-w-full"
-                                        style={{ maxHeight: "300px", maxWidth: "100%" }}
-                                      />
-                                    ) : (
-                                      <video
-                                        src={fullUrl}
-                                        controls
-                                        className="rounded max-w-full"
-                                        style={{ maxHeight: "300px" }}
-                                      />
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
+                        {!isSender && (
+                          <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                            {typeof msg.sender === "object" && msg.sender?.profilePicture ? (
+                              <img
+                                src={normalizeMediaUrl(msg.sender.profilePicture)}
+                                alt="sender"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              (typeof msg.sender === "object" ? msg.sender?.name?.charAt(0) : "H") || "H"
+                            )}
+                          </div>
+                        )}
+                        <div className={`flex flex-col ${isSender ? "items-end" : "items-start"}`}>
+                          {!isSender && typeof msg.sender === "object" && msg.sender?.name && (
+                            <p className="text-xs font-semibold text-gray-600 mb-1">{msg.sender.name}</p>
                           )}
-                          {msg.isDeleted ? (
-                            <p className="italic text-gray-500">This message was deleted</p>
-                          ) : (
-                            msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>
-                          )}
-                          {msg.createdAt && (
-                            <p
-                              className={`text-xs mt-1 ${isSender ? "text-blue-100" : "text-gray-500"
-                                }`}
-                            >
-                              {format(new Date(msg.createdAt), "h:mm a")}
-                            </p>
-                          )}
+                          <div
+                            className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-lg ${isSender
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-200 text-gray-800"
+                              } ${msg.sending ? "opacity-50" : ""}`}
+                          >
+                            {!msg.isDeleted && msg.media && msg.media.length > 0 && (
+                              <div className="space-y-2 mb-2">
+                                {msg.media.map((item, idx) => {
+                                  const fullUrl = normalizeMediaUrl(item.url);
+                                  return (
+                                    <div key={idx}>
+                                      {item.kind === "image" ? (
+                                        <img
+                                          src={fullUrl}
+                                          alt={item.fileName || "image"}
+                                          className="rounded max-w-full"
+                                          style={{ maxHeight: "300px", maxWidth: "100%" }}
+                                        />
+                                      ) : (
+                                        <video
+                                          src={fullUrl}
+                                          controls
+                                          className="rounded max-w-full"
+                                          style={{ maxHeight: "300px" }}
+                                        />
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {msg.isDeleted ? (
+                              <p className="italic text-gray-500">This message was deleted</p>
+                            ) : (
+                              msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>
+                            )}
+                            {msg.createdAt && (
+                              <p
+                                className={`text-xs mt-1 ${isSender ? "text-blue-100" : "text-gray-500"
+                                  }`}
+                              >
+                                {format(new Date(msg.createdAt), "h:mm a")}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                   {isOtherUserTyping && (
-                    <div className="flex justify-start">
+                    <div className="flex justify-start gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex-shrink-0"></div>
                       <div className="max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-lg bg-gray-200 text-gray-800">
                         <div className="flex items-center gap-1">
                           <div className="h-2 w-2 bg-gray-500 rounded-full animate-bounce"></div>

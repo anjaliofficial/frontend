@@ -26,8 +26,8 @@ const normalizeMediaUrl = (url: string): string => {
 
 interface Message {
   _id: string;
-  sender: string;
-  receiver: string;
+  sender: string | { _id?: string; id?: string; fullName?: string; profilePicture?: string };
+  receiver: string | { _id?: string; id?: string; fullName?: string; profilePicture?: string };
   content: string;
   type?: "text" | "media";
   media?: MediaItem[];
@@ -41,6 +41,8 @@ interface Message {
 interface ThreadItem {
   id: string;
   otherUserId: string;
+  otherUserName: string;
+  otherUserImage?: string;
   listingId: string;
   bookingId: string;
   title: string;
@@ -215,6 +217,8 @@ export default function HostMessagesPage() {
       const items: ThreadItem[] = (data.threads || []).map((thread: any) => ({
         id: `${thread.otherUserId}_${thread.listingId}`,
         otherUserId: thread.otherUserId,
+        otherUserName: thread.otherUserName || "Guest",
+        otherUserImage: thread.otherUserImage,
         listingId: thread.listingId || "all",
         bookingId: "",
         title: thread.otherUserName || "Guest",
@@ -678,8 +682,21 @@ export default function HostMessagesPage() {
                       }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-900 truncate">{thread.title}</p>
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                          {thread.otherUserImage ? (
+                            <img
+                              src={normalizeMediaUrl(thread.otherUserImage)}
+                              alt={thread.otherUserName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            thread.otherUserName?.charAt(0)?.toUpperCase() || "U"
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-gray-900 truncate">{thread.title}</p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {thread.unread && (
@@ -758,53 +775,71 @@ export default function HostMessagesPage() {
                           {dateLabel}
                         </div>
                       )}
-                      <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                        <div
-                          onContextMenu={(e) => {
-                            if (!message.isDeleted) {
-                              handleContextMenu(e, message._id, isOwn);
-                            }
-                          }}
-                          className={`w-fit max-w-[65%] rounded-2xl px-4 py-2 text-sm break-words ${!message.isDeleted ? "cursor-context-menu" : "cursor-default"
-                            } ${isOwn
-                              ? "bg-emerald-600 text-white"
-                              : "bg-gray-100 text-gray-800"
-                            } ${message.isDeleted ? "opacity-60 italic pointer-events-none" : ""}`}
-                        >
-                          <>
-                            {!message.isDeleted && message.media && message.media.length > 0 && (
-                              <div className="space-y-2 mb-2">
-                                {message.media.map((item, index) => (
-                                  <div key={`${item.url}-${index}`}>
-                                    {item.kind === "image" ? (
-                                      <img
-                                        src={normalizeMediaUrl(item.url)}
-                                        alt={item.fileName || "attachment"}
-                                        className="max-h-64 rounded-lg border border-white/20"
-                                      />
-                                    ) : (
-                                      <video
-                                        src={normalizeMediaUrl(item.url)}
-                                        controls
-                                        className="max-h-64 rounded-lg border border-white/20"
-                                      />
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {message.isDeleted ? (
-                              <p className="italic text-current opacity-75">This message has been deleted</p>
+                      <div className={`flex gap-2 ${isOwn ? "justify-end" : "justify-start"}`}>
+                        {!isOwn && (
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                            {typeof message.sender === "object" && message.sender?.profilePicture ? (
+                              <img
+                                src={normalizeMediaUrl(message.sender.profilePicture)}
+                                alt="sender"
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
-                              message.content && <p>{message.content}</p>
+                              (typeof message.sender === "object" ? message.sender?.fullName?.charAt(0) : "U") || "U"
                             )}
-                            <div className="flex items-center justify-between mt-1 gap-2">
-                              <p className={`text-xs ${isOwn ? "text-emerald-100" : "text-gray-500"}`}>
-                                {new Date(message.createdAt).toLocaleString()}
-                                {message.isEdited && !message.isDeleted && " (edited)"}
-                              </p>
-                            </div>
-                          </>
+                          </div>
+                        )}
+                        <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
+                          {!isOwn && typeof message.sender === "object" && message.sender?.fullName && (
+                            <p className="text-xs font-semibold text-gray-600 mb-1">{message.sender.fullName}</p>
+                          )}
+                          <div
+                            onContextMenu={(e) => {
+                              if (!message.isDeleted) {
+                                handleContextMenu(e, message._id, isOwn);
+                              }
+                            }}
+                            className={`w-fit max-w-[65%] rounded-2xl px-4 py-2 text-sm break-words ${!message.isDeleted ? "cursor-context-menu" : "cursor-default"
+                              } ${isOwn
+                                ? "bg-emerald-600 text-white"
+                                : "bg-gray-100 text-gray-800"
+                              } ${message.isDeleted ? "opacity-60 italic pointer-events-none" : ""}`}
+                          >
+                            <>
+                              {!message.isDeleted && message.media && message.media.length > 0 && (
+                                <div className="space-y-2 mb-2">
+                                  {message.media.map((item, index) => (
+                                    <div key={`${item.url}-${index}`}>
+                                      {item.kind === "image" ? (
+                                        <img
+                                          src={normalizeMediaUrl(item.url)}
+                                          alt={item.fileName || "attachment"}
+                                          className="max-h-64 rounded-lg border border-white/20"
+                                        />
+                                      ) : (
+                                        <video
+                                          src={normalizeMediaUrl(item.url)}
+                                          controls
+                                          className="max-h-64 rounded-lg border border-white/20"
+                                        />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {message.isDeleted ? (
+                                <p className="italic text-current opacity-75">This message has been deleted</p>
+                              ) : (
+                                message.content && <p>{message.content}</p>
+                              )}
+                              <div className="flex items-center justify-between mt-1 gap-2">
+                                <p className={`text-xs ${isOwn ? "text-emerald-100" : "text-gray-500"}`}>
+                                  {new Date(message.createdAt).toLocaleString()}
+                                  {message.isEdited && !message.isDeleted && " (edited)"}
+                                </p>
+                              </div>
+                            </>
+                          </div>
                         </div>
                       </div>
                     </div>
