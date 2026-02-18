@@ -561,10 +561,12 @@ export default function HostMessagesPage() {
     console.log("Delete for me clicked");
     try {
       console.log("Deleting message for me:", deleteConfirm.messageId);
-      const res = await fetch(`/api/messages/${deleteConfirm.messageId}`, {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/messages/${deleteConfirm.messageId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         credentials: "include",
         body: JSON.stringify({ deleteType: "for_me" }),
@@ -590,10 +592,12 @@ export default function HostMessagesPage() {
     console.log("Delete for everyone clicked");
     try {
       console.log("Deleting message for everyone:", deleteConfirm.messageId);
-      const res = await fetch(`/api/messages/${deleteConfirm.messageId}`, {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/messages/${deleteConfirm.messageId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         credentials: "include",
         body: JSON.stringify({ deleteType: "for_everyone" }),

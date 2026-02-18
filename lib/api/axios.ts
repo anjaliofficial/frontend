@@ -16,6 +16,19 @@ const axiosInstance = axios.create({
   withCredentials: true, // 🔑 needed for cookies
 });
 
+// Add request interceptor to include Authorization header
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log("[AXIOS] Added Authorization header");
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
 // Add response logging for debugging
 axiosInstance.interceptors.response.use(
   (response) => {

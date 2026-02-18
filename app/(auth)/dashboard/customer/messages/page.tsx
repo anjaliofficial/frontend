@@ -810,9 +810,7 @@ const MessageApp = () => {
         url: `/messages/${messageId}`,
       });
 
-      const response = await axios({
-        method: 'delete',
-        url: `/messages/${messageId}`,
+      const response = await axios.delete(`/messages/${messageId}`, {
         data: { deleteType },
         withCredentials: true,
       });
