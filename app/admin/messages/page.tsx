@@ -9,6 +9,8 @@ import {
     User,
     Calendar,
     Home,
+    MessageSquare,
+    Lock,
 } from "lucide-react";
 import { getToken } from "@/lib/auth/storage";
 
@@ -26,8 +28,8 @@ interface Message {
         profilePicture?: string;
         email: string;
     };
-    content: string;
-    media?: string[];
+    content?: string; // 🔒 PRIVACY: Excluded by backend
+    media?: string[]; // 🔒 PRIVACY: Excluded by backend
     listing?: {
         _id: string;
         title: string;
@@ -248,24 +250,30 @@ export default function AdminMessagesPage() {
                     {/* Left Panel - Messages or Conversations List */}
                     <div className="lg:col-span-2">
                         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                            {/* Search Bar (only for "All Messages" tab) */}
+                            {/*  Search Bar Disabled for Privacy - Metadata Only View */}
                             {activeTab === "all" && (
-                                <div className="border-b p-4">
+                                <div className="border-b p-4 bg-red-50">
+                                    <div className="mb-4 flex items-start gap-2 text-red-700 text-sm">
+                                        <Lock size={16} className="mt-0.5 flex-shrink-0" />
+                                        <span>Content search disabled - Viewing metadata only (sender, receiver, timestamp, listing)</span>
+                                    </div>
                                     <form onSubmit={handleSearch} className="space-y-4">
                                         <div className="flex gap-2">
                                             <div className="flex-1 relative">
                                                 <Search className="absolute left-3 top-3 text-gray-400" />
                                                 <input
                                                     type="text"
-                                                    placeholder="Search messages by content..."
+                                                    placeholder="Search (disabled - content protected)"
                                                     value={searchQuery}
                                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    disabled
+                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                                                 />
                                             </div>
                                             <button
                                                 type="submit"
-                                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                disabled
+                                                className="px-6 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
                                             >
                                                 Search
                                             </button>
@@ -301,7 +309,7 @@ export default function AdminMessagesPage() {
                                         <Loader2 className="animate-spin text-blue-600" />
                                     </div>
                                 ) : activeTab === "all" ? (
-                                    // All Messages View
+                                    // All Messages View - Metadata Only (Privacy Protected)
                                     <div className="divide-y">
                                         {messages.length > 0 ? (
                                             messages.map((message) => (
@@ -334,9 +342,14 @@ export default function AdminMessagesPage() {
                                                                         {message.receiver.fullName}
                                                                     </p>
                                                                 </div>
-                                                                <p className="text-gray-600 text-sm truncate">
-                                                                    {message.content}
-                                                                </p>
+                                                                {/* 🔒 PRIVACY: Show only icon, not content */}
+                                                                <div className="flex items-center gap-2 mt-2 text-gray-600">
+                                                                    <Lock size={14} className="text-red-500" />
+                                                                    <MessageSquare size={14} className="text-gray-400" />
+                                                                    <span className="text-xs text-gray-500 italic">
+                                                                        Message content protected
+                                                                    </span>
+                                                                </div>
                                                                 {message.listing && (
                                                                     <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                                                                         <Home size={14} />

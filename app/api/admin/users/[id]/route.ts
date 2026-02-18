@@ -8,10 +8,10 @@ const API_BASE = RAW_API_BASE.endsWith("/api")
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const token = req.cookies.get("token")?.value;
     const headerAuth = req.headers.get("authorization");
     const authHeader = token ? `Bearer ${token}` : headerAuth;
@@ -37,10 +37,10 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const token = req.cookies.get("token")?.value;
     const headerAuth = req.headers.get("authorization");
     const authHeader = token ? `Bearer ${token}` : headerAuth;
@@ -67,10 +67,10 @@ export async function PUT(
 }
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const token = req.cookies.get("token")?.value;
     const headerAuth = req.headers.get("authorization");
     const authHeader = token ? `Bearer ${token}` : headerAuth;

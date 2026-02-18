@@ -8,10 +8,10 @@ const API_BASE = RAW_API_BASE.endsWith("/api")
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { userId1: string; userId2: string } },
+  { params }: { params: Promise<{ userId1: string; userId2: string }> },
 ) {
   try {
-    const { userId1, userId2 } = params;
+    const { userId1, userId2 } = await params;
     const { searchParams } = new URL(req.url);
     const queryString = searchParams.toString();
     const url = new URL(

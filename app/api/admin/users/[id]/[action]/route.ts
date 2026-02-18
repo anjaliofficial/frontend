@@ -8,10 +8,10 @@ const API_BASE = RAW_API_BASE.endsWith("/api")
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string; action: string } },
+  { params }: { params: Promise<{ id: string; action: string }> },
 ) {
   try {
-    const { id, action } = params;
+    const { id, action } = await params;
     const cookieToken = req.cookies.get("token")?.value;
     const headerAuth = req.headers.get("authorization");
     const authHeader = cookieToken ? `Bearer ${cookieToken}` : headerAuth;

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/admin/context/AuthContext";
 import AdminSidebar from "@/app/admin/_components/AdminSidebar";
+import SecurityDisclaimer from "@/app/admin/_components/SecurityDisclaimer";
 
 export default function AdminLayout({
     children,
@@ -37,7 +38,10 @@ export default function AdminLayout({
         <div className="flex h-screen overflow-hidden bg-gray-50">
             <AdminSidebar />
             <main className="flex-1 overflow-auto">
-                <div className="p-8">{children}</div>
+                <div className="p-8">
+                    <SecurityDisclaimer />
+                    {children}
+                </div>
             </main>
         </div>
     );

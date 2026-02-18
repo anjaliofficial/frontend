@@ -8,10 +8,10 @@ const API_BASE = RAW_API_BASE.endsWith("/api")
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { reportId: string } },
+  { params }: { params: Promise<{ reportId: string }> },
 ) {
   try {
-    const { reportId } = params;
+    const { reportId } = await params;
     const body = await req.json();
 
     const cookieToken = req.cookies.get("token")?.value;
