@@ -24,6 +24,14 @@ const normalizeMediaUrl = (url: string): string => {
   return `${API_BASE}/uploads/${filename}`;
 };
 
+const getUserId = (u: any): string | undefined => {
+  if (!u) return undefined;
+  if (typeof u === "string") return u;
+  if (u.id) return u.id;
+  if ((u as any)._id) return (u as any)._id;
+  return undefined;
+};
+
 interface Message {
   _id: string;
   sender: string | { _id?: string; id?: string; fullName?: string; profilePicture?: string };
@@ -764,7 +772,8 @@ export default function HostMessagesPage() {
               (() => {
                 let lastDate = "";
                 return messages.map((message) => {
-                  const isOwn = message.sender === user.id;
+                  const senderId = getUserId(message.sender);
+                  const isOwn = senderId === user.id;
                   const dateLabel = new Date(message.createdAt).toLocaleDateString();
                   const showDate = dateLabel !== lastDate;
                   lastDate = dateLabel;
