@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
-import axios from "axios";
+import axios from "@/lib/api/axios";
 import {
   ArrowLeft,
   Send,
@@ -26,7 +26,8 @@ import {
 
 // Types
 interface User {
-  id: string;
+  id?: string;
+  _id?: string;
   name?: string;
   avatar?: string;
   email?: string;
@@ -84,13 +85,22 @@ interface AttachmentPreview {
 const getUserId = (u: User | string | undefined): string | undefined => {
   if (!u) return undefined;
   if (typeof u === "string") return u;
-  return u.id;
+  if (u.id) return u.id;
+  // In case backend returns _id instead of id
+  if ((u as any)._id) return (u as any)._id;
+  return undefined;
 };
 
 // Helper to normalize user strings to objects
 const normalizeUser = (u: User | string | undefined): User | undefined => {
   if (!u) return undefined;
   if (typeof u === "string") return { id: u };
+
+  // Ensure user has an id field - convert _id to id if needed
+  if (!u.id && (u as any)._id) {
+    console.log("[normalizeUser] Converting _id to id:", (u as any)._id);
+    return { ...u, id: (u as any)._id };
+  }
   return u;
 };
 
@@ -177,8 +187,8 @@ const MessageApp = () => {
     console.log("[USER] Starting fetchUser...");
     const fetchUser = async () => {
       try {
-        console.log("[USER] Calling /api/auth/me");
-        const response = await axios.get("/api/auth/me", {
+        console.log("[USER] Calling /auth/me");
+        const response = await axios.get("/auth/me", {
           withCredentials: true,
         });
         console.log("[USER] Response received:", response.data);
@@ -189,7 +199,10 @@ const MessageApp = () => {
           userData = { ...userData, id: userData._id };
         }
         console.log("[USER] Setting user state with id:", userData?.id, userData);
-        setUser(userData);
+        // Ensure user is normalized with id field
+        const normalizedUser = normalizeUser(userData);
+        console.log("[USER] Normalized user:", normalizedUser);
+        setUser(normalizedUser || userData);
       } catch (error) {
         console.error("[USER] Error loading user:", error);
         router.push("/login");
@@ -223,7 +236,7 @@ const MessageApp = () => {
         params.set("cursor", options.cursor);
       }
       params.set("scope", "all");
-      const url = `/api/messages/threads?${params.toString()}`;
+      const url = `/messages/threads?${params.toString()}`;
       console.log("[fetchThreads] Calling:", url);
 
       const response = await axios.get(url, {
@@ -337,7 +350,7 @@ const MessageApp = () => {
   // Mark thread as read
   const markThreadRead = async (thread: { otherUserId: string; listingId: string }) => {
     try {
-      await axios.patch("/api/messages/read",
+      await axios.patch("/messages/read",
         {
           otherUserId: thread.otherUserId,
           listingId: thread.listingId,
@@ -378,7 +391,7 @@ const MessageApp = () => {
       if (options?.cursor) {
         params.set("cursor", options.cursor);
       }
-      const url = `/api/messages/${hostId}/${normalizedListingId}?${params.toString()}`;
+      const url = `/messages/${hostId}/${normalizedListingId}?${params.toString()}`;
       console.log("[fetchMessages] Calling:", url);
 
       const response = await axios.get(url, {
@@ -426,7 +439,8 @@ const MessageApp = () => {
       setMessagesHasMore(Boolean(data.nextCursor));
 
       if (!append) {
-        await markThreadRead({ otherUserId: hostId, listingId: normalizedListingId });
+        // Mark thread as read
+        axios.patch("/messages/read", { otherUserId: hostId, listingId: normalizedListingId }, { withCredentials: true }).catch(e => console.error("Failed to mark as read", e));
         setThreads((prev) =>
           prev.map((thread) =>
             thread.otherUserId === hostId && thread.listingId === normalizedListingId
@@ -636,7 +650,7 @@ const MessageApp = () => {
 
     try {
       console.log("[Upload] Uploading files:", files.map(f => ({ name: f.name, size: f.size })));
-      const response = await axios.post("/api/upload", formData, {
+      const response = await axios.post("/files", formData, {
         withCredentials: true,
         headers: {
           "Content-Type": "multipart/form-data",
@@ -716,6 +730,7 @@ const MessageApp = () => {
       type: mediaItems.length > 0 ? "media" : "text",
     };
 
+    console.log("[DEBUG] Optimistic message sender:", optimisticMessage.sender, "User ID:", user.id);
     setMessages((prev) => [...prev, optimisticMessage]);
     setMessageInput("");
 
@@ -755,7 +770,7 @@ const MessageApp = () => {
     stopTyping(selected.otherUserId, selected.listingId);
 
     try {
-      await axios.put(`/api/messages/${editingMessage._id}`,
+      await axios.put(`/messages/${editingMessage._id}`,
         { content },
         { withCredentials: true }
       );
@@ -774,20 +789,59 @@ const MessageApp = () => {
     setContextMenu({ open: false, x: 0, y: 0, message: null });
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = async (deleteType: "for_me" | "for_everyone") => {
     if (!deleteModal.message) return;
 
+    const msg = deleteModal.message;
+
+    // Don't delete temp messages that haven't been saved yet
+    if (!msg._id) {
+      setMessages((prev) => prev.filter((m) => m.tempId !== msg.tempId));
+      setDeleteModal({ open: false, message: null });
+      return;
+    }
+
     try {
-      await axios.delete(`/api/messages/${deleteModal.message._id}`,
-        {
-          data: { deleteType: "for_me" },
-          withCredentials: true
-        }
-      );
+      const messageId = msg._id.toString().trim();
+      console.log("[DELETE] Attempting to delete message:", {
+        messageId,
+        deleteType,
+        msgId: msg._id,
+        url: `/messages/${messageId}`,
+      });
+
+      const response = await axios({
+        method: 'delete',
+        url: `/messages/${messageId}`,
+        data: { deleteType },
+        withCredentials: true,
+      });
+
+      console.log("[DELETE] Success response:", response.data);
+
+      // Update local state based on delete type
+      if (deleteType === "for_me") {
+        // Remove only from current user's view
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === msg._id
+              ? { ...m, isDeleted: true, deletedFor: [user?.id || ""] }
+              : m
+          )
+        );
+      } else {
+        // Remove completely for everyone
+        setMessages((prev) => prev.filter((m) => m._id !== msg._id));
+      }
 
       setDeleteModal({ open: false, message: null });
     } catch (error: any) {
-      console.error("Error deleting message:", error);
+      console.error("[DELETE] Error response:", {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error.message,
+        messageId: msg._id,
+      });
       alert(error?.response?.data?.message || "Failed to delete message");
     }
   };
@@ -958,6 +1012,18 @@ const MessageApp = () => {
                   {messages.map((msg, index) => {
                     const senderId = getUserId(msg.sender);
                     const isSender = senderId === user?.id;
+
+                    // Debug logging for message direction
+                    if (index === 0 || index === messages.length - 1) {
+                      console.log("[Message Direction]", {
+                        msg_id: msg._id,
+                        sender: msg.sender,
+                        senderId,
+                        user_id: user?.id,
+                        isSender,
+                        content: msg.content?.substring(0, 20),
+                      });
+                    }
 
                     return (
                       <div
@@ -1150,28 +1216,51 @@ const MessageApp = () => {
 
       {/* Delete Modal */}
       {deleteModal.open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Delete Message</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete this message? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteModal({ open: false, message: null })}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Delete
-              </button>
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
+            onClick={() => setDeleteModal({ open: false, message: null })}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-900 text-white rounded-2xl shadow-2xl max-w-sm w-full border border-gray-700 animate-in fade-in zoom-in-95">
+              {/* Header */}
+              <div className="px-6 py-6 border-b border-gray-700">
+                <h2 className="text-xl font-semibold">Delete message?</h2>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-4">
+                <p className="text-gray-300 text-sm">
+                  Choose how you want to delete this message.
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div className="px-6 py-4 border-t border-gray-700 space-y-3">
+                <button
+                  onClick={() => confirmDelete("for_everyone")}
+                  className="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition-colors"
+                >
+                  Delete for everyone
+                </button>
+
+                <button
+                  onClick={() => confirmDelete("for_me")}
+                  className="w-full px-4 py-3 bg-teal-700 hover:bg-teal-800 text-white font-semibold rounded-lg transition-colors"
+                >
+                  Delete for me
+                </button>
+
+                <button
+                  onClick={() => setDeleteModal({ open: false, message: null })}
+                  className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

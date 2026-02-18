@@ -561,7 +561,7 @@ export default function HostMessagesPage() {
     console.log("Delete for me clicked");
     try {
       console.log("Deleting message for me:", deleteConfirm.messageId);
-      const res = await fetch(`/api/messages/message/${deleteConfirm.messageId}`, {
+      const res = await fetch(`/api/messages/${deleteConfirm.messageId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -590,7 +590,7 @@ export default function HostMessagesPage() {
     console.log("Delete for everyone clicked");
     try {
       console.log("Deleting message for everyone:", deleteConfirm.messageId);
-      const res = await fetch(`/api/messages/message/${deleteConfirm.messageId}`, {
+      const res = await fetch(`/api/messages/${deleteConfirm.messageId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -768,7 +768,7 @@ export default function HostMessagesPage() {
                             } ${message.isDeleted ? "opacity-60 italic pointer-events-none" : ""}`}
                         >
                           <>
-                            {message.media && message.media.length > 0 && (
+                            {!message.isDeleted && message.media && message.media.length > 0 && (
                               <div className="space-y-2 mb-2">
                                 {message.media.map((item, index) => (
                                   <div key={`${item.url}-${index}`}>
@@ -789,7 +789,11 @@ export default function HostMessagesPage() {
                                 ))}
                               </div>
                             )}
-                            {message.content && <p>{message.content}</p>}
+                            {message.isDeleted ? (
+                              <p className="italic text-current opacity-75">This message has been deleted</p>
+                            ) : (
+                              message.content && <p>{message.content}</p>
+                            )}
                             <div className="flex items-center justify-between mt-1 gap-2">
                               <p className={`text-xs ${isOwn ? "text-emerald-100" : "text-gray-500"}`}>
                                 {new Date(message.createdAt).toLocaleString()}
