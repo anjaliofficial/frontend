@@ -808,7 +808,7 @@ export default function HostMessagesPage() {
                                 handleContextMenu(e, message._id, isOwn);
                               }
                             }}
-                            className={`w-fit max-w-[65%] rounded-2xl px-4 py-2 text-sm break-words ${!message.isDeleted ? "cursor-context-menu" : "cursor-default"
+                            className={`w-fit max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl px-4 py-2 text-sm break-words ${!message.isDeleted ? "cursor-context-menu" : "cursor-default"
                               } ${isOwn
                                 ? "bg-emerald-600 text-white"
                                 : "bg-gray-100 text-gray-800"
